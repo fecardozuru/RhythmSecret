@@ -30,8 +30,9 @@ const USER_COLLECTION = 'users';
 
 // Emails administradores pré-aprovados (você pode adicionar o seu aqui)
 const DEFAULT_ADMINS = [
-  'seu-email@gmail.com',  // Substitua pelo seu email
-  'admin@seudominio.com'  // Outros emails admin
+  'felipecardosoru@gmail.com',  // Substitua pelo seu email
+  'marciocardosojr@gmail.com',
+  'felipecardosoru@gmail.com'  // Outros emails admin
 ];
 
 /**
