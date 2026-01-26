@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="default">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="description" content="Rhythm Trainer - Metrônomo inteligente para treino rítmico avançado">
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- SEO -->
+    <title>Rhythm Trainer PRO | Metrônomo Inteligente</title>
+    <meta name="title" content="Rhythm Trainer PRO | Metrônomo Inteligente">
+    <meta name="keywords" content="metrônomo, ritmo, treino musical, música, bateria, percussionista, tempo">
+    <meta name="author" content="Rhythm Trainer">
+    <meta property="og:title" content="Rhythm Trainer PRO">
+    <meta property="og:description" content="Metrônomo inteligente para treino rítmico avançado">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://rhythm-trainer.com">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- PWA Registration -->
+    <script src="/register-sw.js" defer></script>
+    
+    <!-- Theme Script -->
+    <script>
+        // Apply saved theme on load
+        (function() {
+            const savedTheme = localStorage.getItem('rhythm-trainer-theme') || 'default';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            
+            // PWA Install prompt
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                
+                // Show install button if not already installed
+                if (!window.matchMedia('(display-mode: standalone)').matches) {
+                    setTimeout(() => {
+                        const installBtn = document.getElementById('install-pwa-btn');
+                        if (installBtn) {
+                            installBtn.style.display = 'flex';
+                            installBtn.addEventListener('click', async () => {
+                                if (deferredPrompt) {
+                                    deferredPrompt.prompt();
+                                    const { outcome } = await deferredPrompt.userChoice;
+                                    console.log(`User response to the install prompt: ${outcome}`);
+                                    deferredPrompt = null;
+                                }
+                            });
+                        }
+                    }, 3000);
+                }
+            });
+            
+            // Detect standalone mode (PWA)
+            window.addEventListener('load', () => {
+                if (window.matchMedia('(display-mode: standalone)').matches) {
+                    document.body.classList.add('pwa-installed');
+                }
+            });
+        })();
+    </script>
+</head>
+<body class="bg-gray-950 text-white font-sans antialiased">
+    <div id="root" class="h-screen"></div>
+    
+    <!-- Install PWA Button (hidden by default) -->
+    <button 
+        id="install-pwa-btn"
+        class="fixed bottom-6 right-6 z-50 hidden items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl shadow-2xl hover:scale-105 transition-transform"
+        aria-label="Instalar App"
+    >
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+        </svg>
+        Instalar App
+    </button>
+    
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="fixed inset-0 bg-gradient-to-br from-gray-900 to-gray-950 z-50 flex items-center justify-center">
+        <div class="text-center">
+            <div class="relative">
+                <!-- Animated logo -->
+                <div class="w-24 h-24 mx-auto mb-8">
+                    <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse"></div>
+                    <div class="absolute inset-2 rounded-xl bg-gray-900 flex items-center justify-center">
+                        <svg class="w-12 h-12 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <!-- Loading text -->
+                <h1 class="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    Rhythm Trainer
+                </h1>
+                <p class="text-gray-400 mb-6">Carregando experiência musical...</p>
+                
+                <!-- Loading spinner -->
+                <div class="inline-block relative">
+                    <div class="w-16 h-16 border-4 border-gray-800 rounded-full"></div>
+                    <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+                </div>
+                
+                <!-- Loading progress -->
+                <div class="mt-8 w-64 mx-auto">
+                    <div class="h-1 bg-gray-800 rounded-full overflow-hidden">
+                        <div id="loading-progress" class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p id="loading-status" class="text-xs text-gray-500 mt-2">Inicializando sistema de áudio...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Script -->
+    <script>
+        // Simulate loading progress
+        const loadingProgress = document.getElementById('loading-progress');
+        const loadingStatus = document.getElementById('loading-status');
+        const loadingScreen = document.getElementById('loading-screen');
+        
+        const loadingSteps = [
+            { progress: 10, text: 'Inicializando sistema de áudio...' },
+            { progress: 25, text: 'Carregando interface...' },
+            { progress: 40, text: 'Configurando tema...' },
+            { progress: 60, text: 'Conectando com Firebase...' },
+            { progress: 80, text: 'Preparando metrônomo...' },
+            { progress: 95, text: 'Quase pronto...' },
+            { progress: 100, text: 'Concluído!' }
+        ];
+        
+        let currentStep = 0;
+        
+        function updateLoading() {
+            if (currentStep < loadingSteps.length) {
+                const step = loadingSteps[currentStep];
+                loadingProgress.style.width = step.progress + '%';
+                loadingStatus.textContent = step.text;
+                currentStep++;
+                
+                const delay = currentStep === loadingSteps.length - 1 ? 800 : 300;
+                setTimeout(updateLoading, delay);
+            } else {
+                // Hide loading screen when React is ready
+                setTimeout(() => {
+                    loadingScreen.style.opacity = '0';
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+                    }, 500);
+                }, 500);
+            }
+        }
+        
+        // Start loading animation
+        setTimeout(updateLoading, 300);
+        
+        // Check if Web Audio API is supported
+        if (!window.AudioContext && !window.webkitAudioContext) {
+            loadingStatus.textContent = 'Aviso: API de Áudio não suportada. Algumas funcionalidades podem não estar disponíveis.';
+            loadingStatus.className = 'text-xs text-amber-500 mt-2';
+        }
+    </script>
+    
+    <script type="module" src="/src/index.jsx"></script>
+</body>
+</html>
