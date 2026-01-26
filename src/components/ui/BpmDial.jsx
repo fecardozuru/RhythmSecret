@@ -1,619 +1,881 @@
 // /src/components/ui/BpmDial.jsx
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Plus, Minus, Music, Zap, ChevronUp, ChevronDown } from 'lucide-react';
-import { formatBpm, getBpmZone } from '../../utils/formatters';
-import { calculateBpmAngle, angleToBpm } from '../../utils/timingUtils';
-import { BPM_STEP_OPTIONS, COMMON_BPMS } from '../../constants/bpmSteps';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { 
+  Minus, 
+  Plus, 
+  ChevronUp, 
+  ChevronDown,
+  Zap,
+  Turtle,
+  Rabbit,
+  Gauge,
+  Target,
+  Clock,
+  RotateCcw,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+  Music
+} from 'lucide-react';
 
 /**
- * BpmDial - Controle circular de BPM com ponteiro animado
- * Interface interativa para ajuste preciso de tempo
+ * BpmDial - Controle avançado de BPM com visualização circular e controles precisos
+ * Suporta ajuste fino, marcadores de andamento e modos de velocidade
  */
+
+// Marcadores de andamento musical
+const TEMPO_MARKINGS = [
+  { min: 20, max: 40, label: 'Larghissimo', description: 'Extremamente lento', color: 'text-blue-300', icon: Turtle },
+  { min: 41, max: 60, label: 'Largo', description: 'Muito lento, largo', color: 'text-blue-400', icon: Turtle },
+  { min: 61, max: 66, label: 'Larghetto', description: 'Um pouco menos lento', color: 'text-blue-500', icon: Clock },
+  { min: 67, max: 76, label: 'Adagio', description: 'Lento e gracioso', color: 'text-indigo-400', icon: Clock },
+  { min: 77, max: 108, label: 'Andante', description: 'Passo de caminhada', color: 'text-green-400', icon: Music },
+  { min: 109, max: 120, label: 'Moderato', description: 'Moderado', color: 'text-yellow-400', icon: Music },
+  { min: 121, max: 168, label: 'Allegro', description: 'Rápido, alegre', color: 'text-orange-400', icon: Rabbit },
+  { min: 169, max: 200, label: 'Vivace', description: 'Vivo e rápido', color: 'text-red-400', icon: Rabbit },
+  { min: 201, max: 240, label: 'Presto', description: 'Muito rápido', color: 'text-red-500', icon: Zap },
+  { min: 241, max: 300, label: 'Prestissimo', description: 'O mais rápido possível', color: 'text-purple-400', icon: Zap }
+];
+
+// Passos de ajuste de BPM
+const BPM_STEPS = [
+  { value: 1, label: 'Fino', description: 'Ajuste de 1 BPM' },
+  { value: 5, label: 'Padrão', description: 'Ajuste de 5 BPM' },
+  { value: 10, label: 'Rápido', description: 'Ajuste de 10 BPM' },
+  { value: 15, label: 'Ágil', description: 'Ajuste de 15 BPM' },
+  { value: 20, label: 'Largo', description: 'Ajuste de 20 BPM' },
+  { value: 25, label: 'Grande', description: 'Ajuste de 25 BPM' },
+  { value: 30, label: 'Salto', description: 'Ajuste de 30 BPM' }
+];
+
+// Presets de BPM comuns
+const BPM_PRESETS = [
+  { value: 40, label: 'Ext. Lento', category: 'Lento' },
+  { value: 60, label: 'Lento', category: 'Lento' },
+  { value: 80, label: 'Calmo', category: 'Moderado' },
+  { value: 100, label: 'Andante', category: 'Moderado' },
+  { value: 120, label: 'Marcha', category: 'Moderado' },
+  { value: 140, label: 'Pop', category: 'Rápido' },
+  { value: 160, label: 'Rock', category: 'Rápido' },
+  { value: 180, label: 'Dance', category: 'Rápido' },
+  { value: 200, label: 'Hardcore', category: 'Ext. Rápido' },
+  { value: 240, label: 'Speed', category: 'Ext. Rápido' }
+];
+
 const BpmDial = ({
   bpm = 120,
-  minBpm = 40,
+  onChange,
+  minBpm = 20,
   maxBpm = 300,
   step = 5,
-  onChange,
-  onStepChange,
   theme = 'default',
+  showTempoMarkings = true,
   showPresets = true,
   showStepSelector = true,
-  animated = true,
-  size = 'lg',
-  className = '',
+  compact = false,
+  disabled = false,
+  isPlaying = false,
+  className = ''
 }) => {
+  const [localBpm, setLocalBpm] = useState(bpm);
+  const [currentStep, setCurrentStep] = useState(step);
   const [isDragging, setIsDragging] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [currentStep, setCurrentStep] = useState(step);
-  const [showPresetsMenu, setShowPresetsMenu] = useState(false);
   const [showStepMenu, setShowStepMenu] = useState(false);
+  const [showPresetsMenu, setShowPresetsMenu] = useState(false);
+  const [inputMode, setInputMode] = useState(false);
+  const [inputValue, setInputValue] = useState('');
   
   const dialRef = useRef(null);
-  const dragStartAngle = useRef(0);
-  const dragStartRotation = useRef(0);
+  const containerRef = useRef(null);
   
-  // Configurações baseadas no tamanho
-  const sizeConfig = {
-    sm: { diameter: 160, strokeWidth: 8, fontSize: 'text-lg', iconSize: 16 },
-    md: { diameter: 200, strokeWidth: 10, fontSize: 'text-xl', iconSize: 20 },
-    lg: { diameter: 240, strokeWidth: 12, fontSize: 'text-2xl', iconSize: 24 },
-    xl: { diameter: 300, strokeWidth: 14, fontSize: 'text-3xl', iconSize: 28 },
-  };
-  
-  const config = sizeConfig[size] || sizeConfig.lg;
-  const radius = config.diameter / 2;
-  const center = radius;
-  const trackRadius = radius - config.strokeWidth;
-  
-  // Temas de cores
-  const themeColors = {
-    default: {
-      track: 'text-gray-800',
-      progress: 'text-blue-500',
-      pointer: 'text-blue-400',
-      text: 'text-white',
-      bg: 'bg-gray-900',
-      button: 'bg-gray-800 hover:bg-gray-700',
-    },
-    instagram: {
-      track: 'text-gray-800',
-      progress: 'text-gradient-to-r from-pink-500 to-purple-500',
-      pointer: 'text-pink-400',
-      text: 'text-white',
-      bg: 'bg-gray-900',
-      button: 'bg-gradient-to-r from-pink-900/50 to-purple-900/50 hover:opacity-90',
-    },
-    tiktok: {
-      track: 'text-gray-800',
-      progress: 'text-gradient-to-r from-cyan-400 to-blue-500',
-      pointer: 'text-cyan-300',
-      text: 'text-white',
-      bg: 'bg-gray-900',
-      button: 'bg-gradient-to-r from-cyan-900/50 to-blue-900/50 hover:opacity-90',
-    },
-    'pro-gold': {
-      track: 'text-gray-800',
-      progress: 'text-gradient-to-r from-amber-400 to-yellow-500',
-      pointer: 'text-amber-300',
-      text: 'text-amber-50',
-      bg: 'bg-gray-950',
-      button: 'bg-gradient-to-r from-amber-900/30 to-yellow-900/30 hover:opacity-90',
-    },
-  };
-  
-  const colors = themeColors[theme] || themeColors.default;
-  
-  // Atualiza rotação quando BPM muda
+  // Sincroniza com prop bpm
   useEffect(() => {
-    const newRotation = calculateBpmAngle(bpm, minBpm, maxBpm);
-    setRotation(newRotation);
+    setLocalBpm(bpm);
+    // Calcula rotação baseada no BPM (0° a 270°)
+    const percentage = (bpm - minBpm) / (maxBpm - minBpm);
+    setRotation(percentage * 270);
   }, [bpm, minBpm, maxBpm]);
   
-  // Obtém informações da zona de BPM atual
-  const bpmZone = getBpmZone(bpm);
+  // Encontra o marcador de andamento atual
+  const getCurrentTempoMarking = useCallback(() => {
+    return TEMPO_MARKINGS.find(marking => 
+      localBpm >= marking.min && localBpm <= marking.max
+    ) || TEMPO_MARKINGS[TEMPO_MARKINGS.length - 1];
+  }, [localBpm]);
   
-  // Manipulador de início do drag
-  const handleDragStart = useCallback((e) => {
-    e.preventDefault();
+  // Ajusta BPM com limites
+  const adjustBpm = useCallback((delta) => {
+    if (disabled) return;
+    
+    const newBpm = Math.max(minBpm, Math.min(maxBpm, localBpm + delta));
+    
+    setLocalBpm(newBpm);
+    
+    if (onChange) {
+      onChange(newBpm);
+    }
+  }, [localBpm, minBpm, maxBpm, onChange, disabled]);
+  
+  // Define BPM específico
+  const setBpm = useCallback((value) => {
+    if (disabled) return;
+    
+    const newBpm = Math.max(minBpm, Math.min(maxBpm, value));
+    
+    setLocalBpm(newBpm);
+    setInputMode(false);
+    
+    if (onChange) {
+      onChange(newBpm);
+    }
+  }, [minBpm, maxBpm, onChange, disabled]);
+  
+  // Manipulador de clique no dial
+  const handleDialClick = useCallback((e) => {
+    if (disabled || inputMode) return;
+    
+    const rect = dialRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const angle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI);
+    
+    // Converte ângulo para 0-270 graus
+    let normalizedAngle = angle + 90;
+    if (normalizedAngle < 0) normalizedAngle += 360;
+    normalizedAngle = Math.max(0, Math.min(270, normalizedAngle));
+    
+    // Converte para BPM
+    const percentage = normalizedAngle / 270;
+    const newBpm = minBpm + percentage * (maxBpm - minBpm);
+    const roundedBpm = Math.round(newBpm / currentStep) * currentStep;
+    
+    setBpm(roundedBpm);
+  }, [minBpm, maxBpm, currentStep, setBpm, disabled, inputMode]);
+  
+  // Manipulador de arrastar no dial
+  const handleDialDrag = useCallback((e) => {
+    if (disabled || inputMode) return;
+    
     setIsDragging(true);
     
-    const rect = dialRef.current.getBoundingClientRect();
-    const centerX = rect.left + radius;
-    const centerY = rect.top + radius;
+    const handleMouseMove = (moveEvent) => {
+      const rect = dialRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const angle = Math.atan2(moveEvent.clientY - centerY, moveEvent.clientX - centerX) * (180 / Math.PI);
+      
+      // Converte ângulo para 0-270 graus
+      let normalizedAngle = angle + 90;
+      if (normalizedAngle < 0) normalizedAngle += 360;
+      normalizedAngle = Math.max(0, Math.min(270, normalizedAngle));
+      
+      // Converte para BPM
+      const percentage = normalizedAngle / 270;
+      const newBpm = minBpm + percentage * (maxBpm - minBpm);
+      const roundedBpm = Math.round(newBpm / currentStep) * currentStep;
+      
+      setLocalBpm(roundedBpm);
+      setRotation(normalizedAngle);
+    };
     
-    const startX = e.clientX || e.touches[0].clientX;
-    const startY = e.clientY || e.touches[0].clientY;
-    
-    // Calcula ângulo inicial
-    dragStartAngle.current = Math.atan2(startY - centerY, startX - centerX) * (180 / Math.PI);
-    dragStartRotation.current = rotation;
-    
-    // Adiciona listeners
-    const handleMove = (moveEvent) => {
-      const clientX = moveEvent.clientX || moveEvent.touches[0].clientX;
-      const clientY = moveEvent.clientY || moveEvent.touches[0].clientY;
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
       
-      const currentAngle = Math.atan2(clientY - centerY, clientX - centerX) * (180 / Math.PI);
-      const angleDiff = currentAngle - dragStartAngle.current;
-      
-      let newRotation = dragStartRotation.current + angleDiff;
-      
-      // Mantém entre 135° e 405° (270° de rotação)
-      if (newRotation < 135) newRotation = 135;
-      if (newRotation > 405) newRotation = 405;
-      
-      setRotation(newRotation);
-      
-      // Calcula novo BPM
-      const newBpm = angleToBpm(newRotation, minBpm, maxBpm);
-      
-      if (onChange && Math.round(newBpm) !== bpm) {
-        onChange(Math.round(newBpm));
+      if (onChange) {
+        onChange(localBpm);
       }
     };
     
-    const handleEnd = () => {
-      setIsDragging(false);
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleEnd);
-      document.removeEventListener('touchmove', handleMove);
-      document.removeEventListener('touchend', handleEnd);
-    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [minBpm, maxBpm, currentStep, onChange, localBpm, disabled, inputMode]);
+  
+  // Manipulador de entrada manual
+  const handleInputSubmit = useCallback((e) => {
+    e.preventDefault();
     
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleEnd);
-    document.addEventListener('touchmove', handleMove, { passive: false });
-    document.addEventListener('touchend', handleEnd);
-  }, [radius, rotation, bpm, minBpm, maxBpm, onChange]);
-  
-  // Incrementa BPM
-  const incrementBpm = useCallback(() => {
-    const newBpm = Math.min(maxBpm, bpm + currentStep);
-    if (onChange) onChange(newBpm);
-  }, [bpm, maxBpm, currentStep, onChange]);
-  
-  // Decrementa BPM
-  const decrementBpm = useCallback(() => {
-    const newBpm = Math.max(minBpm, bpm - currentStep);
-    if (onChange) onChange(newBpm);
-  }, [bpm, minBpm, currentStep, onChange]);
-  
-  // Aplica um preset de BPM
-  const applyBpmPreset = useCallback((presetBpm) => {
-    if (onChange) onChange(presetBpm);
-    setShowPresetsMenu(false);
-  }, [onChange]);
-  
-  // Altera o passo de incremento
-  const changeStep = useCallback((newStep) => {
-    setCurrentStep(newStep);
-    if (onStepChange) onStepChange(newStep);
-    setShowStepMenu(false);
-  }, [onStepChange]);
-  
-  // Renderiza o círculo do dial
-  const renderDialCircle = () => {
-    const startAngle = 135;
-    const endAngle = 405;
-    const currentAngle = rotation;
+    if (!inputValue.trim()) {
+      setInputMode(false);
+      return;
+    }
     
-    // Converte ângulos para radianos
-    const startRad = (startAngle - 90) * Math.PI / 180;
-    const endRad = (endAngle - 90) * Math.PI / 180;
-    const currentRad = (currentAngle - 90) * Math.PI / 180;
+    const value = parseInt(inputValue, 10);
+    if (!isNaN(value)) {
+      setBpm(value);
+    }
     
-    // Calcula pontos do arco
-    const startX = center + trackRadius * Math.cos(startRad);
-    const startY = center + trackRadius * Math.sin(startRad);
-    const endX = center + trackRadius * Math.cos(endRad);
-    const endY = center + trackRadius * Math.sin(endRad);
-    const currentX = center + trackRadius * Math.cos(currentRad);
-    const currentY = center + trackRadius * Math.sin(currentRad);
+    setInputValue('');
+    setInputMode(false);
+  }, [inputValue, setBpm]);
+  
+  // Calcula cor baseada no BPM
+  const getBpmColor = useCallback(() => {
+    const percentage = (localBpm - minBpm) / (maxBpm - minBpm);
     
-    // Cria caminho do arco de progresso
-    const largeArcFlag = endAngle - startAngle <= 180 ? 0 : 1;
+    if (percentage < 0.3) {
+      return theme === 'pro-gold' 
+        ? 'from-blue-400 to-cyan-400' 
+        : 'from-blue-500 to-cyan-500';
+    } else if (percentage < 0.6) {
+      return theme === 'pro-gold'
+        ? 'from-green-400 to-emerald-400'
+        : 'from-green-500 to-emerald-500';
+    } else if (percentage < 0.8) {
+      return theme === 'pro-gold'
+        ? 'from-amber-400 to-yellow-400'
+        : 'from-orange-500 to-yellow-500';
+    } else {
+      return theme === 'pro-gold'
+        ? 'from-red-400 to-pink-400'
+        : 'from-red-500 to-pink-500';
+    }
+  }, [localBpm, minBpm, maxBpm, theme]);
+  
+  // Renderiza o dial circular
+  const renderDial = () => {
+    const tempoMarking = getCurrentTempoMarking();
+    const TempoIcon = tempoMarking.icon;
+    const bpmColor = getBpmColor();
     
     return (
-      <svg
-        width={config.diameter}
-        height={config.diameter}
-        className="absolute inset-0"
-      >
-        {/* Fundo do track */}
-        <circle
-          cx={center}
-          cy={center}
-          r={trackRadius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={config.strokeWidth}
-          className={`${colors.track} opacity-30`}
-        />
+      <div className="relative" ref={containerRef}>
+        {/* Anel externo com gradiente */}
+        <div className={`
+          absolute inset-0 rounded-full border-4
+          ${theme === 'pro-gold' 
+            ? 'border-gray-800/50' 
+            : 'border-gray-900/50'
+          }
+        `} />
         
-        {/* Arco de progresso */}
-        <path
-          d={`
-            M ${startX} ${startY}
-            A ${trackRadius} ${trackRadius} 0 ${largeArcFlag} 1 ${currentX} ${currentY}
-          `}
-          fill="none"
-          stroke="url(#gradient-progress)"
-          strokeWidth={config.strokeWidth}
-          strokeLinecap="round"
-          className="transition-all duration-300 ease-out"
-        />
-        
-        {/* Gradiente para o progresso */}
-        <defs>
-          <linearGradient id="gradient-progress" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="currentColor" className={colors.progress.includes('gradient') ? 'text-pink-500' : colors.progress} />
-            <stop offset="100%" stopColor="currentColor" className={colors.progress.includes('gradient') ? 'text-purple-500' : colors.progress} />
-          </linearGradient>
-        </defs>
-        
-        {/* Marcadores de BPM */}
-        {[40, 80, 120, 160, 200, 240, 280].map((markBpm) => {
-          if (markBpm < minBpm || markBpm > maxBpm) return null;
-          
-          const markerAngle = calculateBpmAngle(markBpm, minBpm, maxBpm);
-          const markerRad = (markerAngle - 90) * Math.PI / 180;
-          const markerLength = markBpm % 40 === 0 ? 12 : 6;
-          const markerX1 = center + (trackRadius - markerLength) * Math.cos(markerRad);
-          const markerY1 = center + (trackRadius - markerLength) * Math.sin(markerRad);
-          const markerX2 = center + (trackRadius + 4) * Math.cos(markerRad);
-          const markerY2 = center + (trackRadius + 4) * Math.sin(markerRad);
-          
-          return (
-            <g key={`marker-${markBpm}`}>
-              <line
-                x1={markerX1}
-                y1={markerY1}
-                x2={markerX2}
-                y2={markerY2}
-                stroke="currentColor"
-                strokeWidth={markBpm % 40 === 0 ? 2 : 1}
-                className={colors.text}
-                opacity={0.6}
-              />
-              
-              {/* Labels para marcas principais */}
-              {markBpm % 40 === 0 && (
-                <text
-                  x={center + (trackRadius + 20) * Math.cos(markerRad)}
-                  y={center + (trackRadius + 20) * Math.sin(markerRad)}
-                  textAnchor="middle"
-                  alignmentBaseline="middle"
-                  className={`text-xs fill-current ${colors.text} opacity-80`}
-                >
-                  {markBpm}
-                </text>
-              )}
-            </g>
-          );
-        })}
-        
-        {/* Ponteiro */}
-        <g transform={`rotate(${rotation} ${center} ${center})`}>
-          {/* Base do ponteiro */}
+        {/* Track do dial */}
+        <svg 
+          className="absolute inset-0 w-full h-full rotate-[-135deg]"
+          viewBox="0 0 100 100"
+        >
+          {/* Track de fundo */}
           <circle
-            cx={center}
-            cy={center}
-            r={config.strokeWidth}
-            fill="currentColor"
-            className={`${colors.pointer} ${animated ? 'animate-pulse-subtle' : ''}`}
-          />
-          
-          {/* Haste do ponteiro */}
-          <line
-            x1={center}
-            y1={center}
-            x2={center}
-            y2={center - trackRadius + 10}
+            cx="50"
+            cy="50"
+            r="45"
+            fill="transparent"
             stroke="currentColor"
-            strokeWidth="3"
+            strokeWidth="6"
             strokeLinecap="round"
-            className={colors.pointer}
+            className="text-gray-800/30"
           />
           
-          {/* Cabeça do ponteiro */}
+          {/* Track ativa */}
           <circle
-            cx={center}
-            cy={center - trackRadius + 10}
-            r="6"
-            fill="currentColor"
-            className={colors.pointer}
-          >
-            {animated && (
-              <animate
-                attributeName="r"
-                values="6;8;6"
-                dur="1.5s"
-                repeatCount="indefinite"
-              />
-            )}
-          </circle>
-        </g>
+            cx="50"
+            cy="50"
+            r="45"
+            fill="transparent"
+            stroke="url(#bpm-gradient)"
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray="283"
+            strokeDashoffset={283 - (rotation / 270 * 283)}
+            style={{ transition: isDragging ? 'none' : 'stroke-dashoffset 0.2s ease-out' }}
+          />
+          
+          {/* Gradiente */}
+          <defs>
+            <linearGradient id="bpm-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" className={`${bpmColor.split(' ')[0]}`} />
+              <stop offset="100%" className={`${bpmColor.split(' ')[1]}`} />
+            </linearGradient>
+          </defs>
+        </svg>
         
-        {/* Centro do dial */}
-        <circle
-          cx={center}
-          cy={center}
-          r={config.strokeWidth * 1.5}
-          fill="currentColor"
-          className={`${colors.bg} ${isDragging ? 'scale-110' : ''} transition-transform duration-200`}
-        />
-      </svg>
-    );
-  };
-  
-  // Renderiza menu de presets de BPM
-  const renderPresetsMenu = () => {
-    if (!showPresetsMenu) return null;
-    
-    return (
-      <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 -translate-y-full z-50">
-        <div className={`rounded-lg shadow-2xl p-3 min-w-[200px] ${colors.bg} border border-gray-800`}>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-semibold text-gray-300">BPMs Comuns</h3>
-            <button
-              onClick={() => setShowPresetsMenu(false)}
-              className="text-gray-500 hover:text-white"
-            >
-              ×
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-2">
-            {COMMON_BPMS.map((preset) => (
-              <button
-                key={preset.bpm}
-                onClick={() => applyBpmPreset(preset.bpm)}
-                className={`
-                  text-left p-2 rounded transition-all duration-200
-                  ${preset.bpm === bpm ? 'bg-blue-500/20 text-blue-300' : 'hover:bg-gray-800 text-gray-300'}
-                `}
+        {/* Marcadores no dial */}
+        <div className="absolute inset-0">
+          {[...Array(9)].map((_, i) => {
+            const angle = (i * 30) - 135; // -135° a 135°
+            const rad = angle * (Math.PI / 180);
+            const x = 50 + 40 * Math.cos(rad);
+            const y = 50 + 40 * Math.sin(rad);
+            const value = Math.round(minBpm + (i / 8) * (maxBpm - minBpm));
+            
+            return (
+              <div
+                key={`marker-${i}`}
+                className="absolute transform -translate-x-1/2 -translate-y-1/2"
+                style={{
+                  left: `${x}%`,
+                  top: `${y}%`,
+                }}
               >
-                <div className="font-semibold">{preset.label}</div>
-                <div className="text-xs text-gray-400">{preset.description}</div>
-              </button>
-            ))}
-          </div>
-          
-          <div className="mt-3 pt-3 border-t border-gray-800">
-            <div className="text-xs text-gray-500 mb-2">Zona atual:</div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{bpmZone.emoji}</span>
-              <div>
-                <div className="font-semibold text-gray-200">{bpmZone.label}</div>
-                <div className="text-xs text-gray-400">{bpmZone.description}</div>
+                <div className={`
+                  w-2 h-2 rounded-full
+                  ${value <= localBpm 
+                    ? (theme === 'pro-gold' ? 'bg-amber-400' : 'bg-blue-500')
+                    : 'bg-gray-700'
+                  }
+                `} />
               </div>
+            );
+          })}
+        </div>
+        
+        {/* Ponteiro do dial */}
+        <div
+          className={`
+            absolute top-1/2 left-1/2 w-1 h-12 origin-bottom
+            ${isDragging ? 'scale-110' : ''}
+            transition-transform duration-150
+          `}
+          style={{
+            transform: `
+              translate(-50%, -100%) 
+              rotate(${rotation}deg)
+            `,
+          }}
+        >
+          <div className={`
+            absolute inset-0 rounded-full
+            ${theme === 'pro-gold'
+              ? 'bg-gradient-to-t from-amber-400 to-yellow-400'
+              : 'bg-gradient-to-t from-blue-500 to-cyan-500'
+            }
+            shadow-lg
+          `} />
+          <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-4 h-4 rounded-full bg-white shadow-lg" />
+        </div>
+        
+        {/* Área clicável do dial */}
+        <div
+          ref={dialRef}
+          className={`
+            absolute inset-8 rounded-full cursor-pointer
+            ${disabled ? 'cursor-not-allowed' : ''}
+            ${isDragging ? 'scale-105' : ''}
+            transition-transform duration-200
+          `}
+          onClick={handleDialClick}
+          onMouseDown={handleDialDrag}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            handleDialDrag(e.touches[0]);
+          }}
+        />
+        
+        {/* Display central */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          {inputMode ? (
+            <form onSubmit={handleInputSubmit} className="relative">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value.replace(/\D/g, ''))}
+                className={`
+                  w-24 bg-transparent border-none text-3xl font-black text-center
+                  outline-none focus:outline-none
+                  ${theme === 'pro-gold' ? 'text-amber-300' : 'text-white'}
+                `}
+                autoFocus
+                maxLength={3}
+                placeholder={localBpm.toString()}
+              />
+              <div className="text-xs text-gray-400 mt-1">
+                Pressione Enter para confirmar
+              </div>
+            </form>
+          ) : (
+            <>
+              <div 
+                className={`
+                  text-5xl font-black tabular-nums leading-none mb-1
+                  ${disabled ? 'opacity-50' : 'cursor-pointer hover:opacity-80'}
+                  ${theme === 'pro-gold' ? 'text-amber-300' : 'text-white'}
+                  transition-opacity duration-200
+                `}
+                onClick={() => !disabled && setInputMode(true)}
+              >
+                {Math.round(localBpm)}
+              </div>
+              <div className="text-xs text-gray-400 mb-1">BPM</div>
+              
+              {/* Andamento atual */}
+              {showTempoMarkings && (
+                <div className="flex items-center gap-2 mt-2">
+                  <TempoIcon size={14} className={tempoMarking.color} />
+                  <div className={`text-sm font-medium ${tempoMarking.color}`}>
+                    {tempoMarking.label}
+                  </div>
+                </div>
+              )}
+              
+              {/* Descrição do andamento */}
+              {showTempoMarkings && !compact && (
+                <div className="text-xs text-gray-400 mt-1 max-w-[120px] text-center">
+                  {tempoMarking.description}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        
+        {/* Indicador de reprodução */}
+        {isPlaying && (
+          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+            <div className={`
+              w-6 h-6 rounded-full flex items-center justify-center
+              ${theme === 'pro-gold' 
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black' 
+                : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+              }
+              shadow-lg animate-pulse
+            `}>
+              <Music size={12} />
             </div>
           </div>
-        </div>
-        
-        {/* Seta */}
-        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900" />
+        )}
       </div>
     );
   };
   
-  // Renderiza menu de seleção de passo
-  const renderStepMenu = () => {
-    if (!showStepMenu) return null;
+  // Renderiza controles de ajuste fino
+  const renderFineControls = () => {
+    if (compact) return null;
     
     return (
-      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 translate-y-full z-50">
-        <div className={`rounded-lg shadow-2xl p-3 min-w-[180px] ${colors.bg} border border-gray-800`}>
-          <div className="flex justify-between items-center mb-2">
-            <h3 className="text-sm font-semibold text-gray-300">Incremento</h3>
-            <button
-              onClick={() => setShowStepMenu(false)}
-              className="text-gray-500 hover:text-white"
-            >
-              ×
-            </button>
-          </div>
+      <div className="flex items-center justify-center gap-4 mt-4">
+        {/* Botão de decremento grande */}
+        <button
+          onClick={() => adjustBpm(-currentStep)}
+          disabled={disabled}
+          className={`
+            w-12 h-12 rounded-full flex items-center justify-center
+            transition-all duration-200
+            ${disabled 
+              ? 'opacity-50 cursor-not-allowed bg-gray-800/30' 
+              : 'hover:scale-110 active:scale-95 hover:bg-gray-800'
+            }
+            ${theme === 'pro-gold' 
+              ? 'border border-amber-700/30' 
+              : 'border border-gray-700'
+            }
+          `}
+          aria-label={`Diminuir ${currentStep} BPM`}
+        >
+          <Minus size={24} className={disabled ? 'text-gray-500' : 'text-white'} />
+        </button>
+        
+        {/* Display do passo atual */}
+        <div className="relative">
+          <button
+            onClick={() => !disabled && setShowStepMenu(!showStepMenu)}
+            disabled={disabled}
+            className={`
+              px-3 py-1.5 rounded-lg flex items-center gap-2
+              transition-colors duration-200
+              ${disabled 
+                ? 'opacity-50 cursor-not-allowed bg-gray-800/30' 
+                : 'hover:bg-gray-800'
+              }
+              ${theme === 'pro-gold' 
+                ? 'border border-amber-700/30' 
+                : 'border border-gray-700'
+              }
+            `}
+            aria-label="Alterar passo de ajuste"
+          >
+            <span className="text-sm font-medium text-gray-300">Passo:</span>
+            <span className="font-bold text-white">{currentStep}</span>
+            <ChevronDown size={12} className="text-gray-400" />
+          </button>
           
-          <div className="space-y-1">
-            {BPM_STEP_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => changeStep(option.value)}
-                className={`
-                  w-full flex items-center justify-between p-2 rounded transition-all duration-200
-                  ${option.value === currentStep ? 'bg-blue-500/20 text-blue-300' : 'hover:bg-gray-800 text-gray-300'}
-                `}
-              >
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${option.bgColor}`} />
-                  <span>{option.label}</span>
-                </div>
-                <span className="text-xs text-gray-400">{option.precision}</span>
-              </button>
-            ))}
-          </div>
+          {/* Menu de seleção de passo */}
+          {showStepMenu && !disabled && (
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-10">
+              <div className="p-2">
+                <div className="text-xs text-gray-400 mb-2 px-2">Tamanho do passo</div>
+                {BPM_STEPS.map(stepOption => (
+                  <button
+                    key={stepOption.value}
+                    onClick={() => {
+                      setCurrentStep(stepOption.value);
+                      setShowStepMenu(false);
+                    }}
+                    className={`
+                      w-full text-left px-3 py-2 rounded-md mb-1 last:mb-0
+                      transition-colors duration-150
+                      ${currentStep === stepOption.value 
+                        ? `${theme === 'pro-gold' ? 'bg-amber-900/30 text-amber-300' : 'bg-gray-800 text-white'}` 
+                        : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{stepOption.label}</span>
+                      <span className="text-sm opacity-70">{stepOption.value} BPM</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {stepOption.description}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         
-        {/* Seta */}
-        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-gray-900" />
+        {/* Botão de incremento grande */}
+        <button
+          onClick={() => adjustBpm(currentStep)}
+          disabled={disabled}
+          className={`
+            w-12 h-12 rounded-full flex items-center justify-center
+            transition-all duration-200
+            ${disabled 
+              ? 'opacity-50 cursor-not-allowed bg-gray-800/30' 
+              : 'hover:scale-110 active:scale-95 hover:bg-gray-800'
+            }
+            ${theme === 'pro-gold' 
+              ? 'border border-amber-700/30' 
+              : 'border border-gray-700'
+            }
+          `}
+          aria-label={`Aumentar ${currentStep} BPM`}
+        >
+          <Plus size={24} className={disabled ? 'text-gray-500' : 'text-white'} />
+        </button>
       </div>
     );
   };
+  
+  // Renderiza presets de BPM
+  const renderPresets = () => {
+    if (!showPresets || compact) return null;
+    
+    return (
+      <div className="mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-medium text-gray-300">Presets de Velocidade</div>
+          <button
+            onClick={() => !disabled && setShowPresetsMenu(!showPresetsMenu)}
+            disabled={disabled}
+            className="text-xs text-gray-400 hover:text-white transition-colors"
+          >
+            {showPresetsMenu ? 'Ocultar' : 'Mostrar todos'}
+          </button>
+        </div>
+        
+        {/* Grid de presets principais */}
+        <div className="grid grid-cols-5 gap-2">
+          {BPM_PRESETS.slice(0, 5).map(preset => (
+            <button
+              key={preset.value}
+              onClick={() => setBpm(preset.value)}
+              disabled={disabled}
+              className={`
+                py-2 rounded-lg text-xs font-medium
+                transition-all duration-200
+                ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
+                ${localBpm === preset.value
+                  ? `${theme === 'pro-gold' 
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black' 
+                      : 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                    }`
+                  : 'bg-gray-800/50 text-gray-300 hover:bg-gray-700/50'
+                }
+              `}
+              aria-label={`Definir BPM para ${preset.label} (${preset.value})`}
+            >
+              {preset.value}
+            </button>
+          ))}
+        </div>
+        
+        {/* Presets expandidos */}
+        {showPresetsMenu && !disabled && (
+          <div className="mt-4 p-3 bg-gray-900/50 rounded-lg border border-gray-700">
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {['Lento', 'Moderado', 'Rápido', 'Ext. Rápido'].map(category => (
+                <div key={category} className="text-xs text-gray-400">
+                  {category}
+                </div>
+              ))}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              {BPM_PRESETS.map(preset => (
+                <button
+                  key={preset.value}
+                  onClick={() => {
+                    setBpm(preset.value);
+                    setShowPresetsMenu(false);
+                  }}
+                  className={`
+                    flex items-center justify-between px-3 py-2 rounded-md
+                    transition-colors duration-150
+                    ${localBpm === preset.value
+                      ? `${theme === 'pro-gold' 
+                          ? 'bg-amber-900/30 text-amber-300' 
+                          : 'bg-gray-800 text-white'
+                        }`
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                    }
+                  `}
+                >
+                  <div className="text-left">
+                    <div className="font-medium">{preset.label}</div>
+                    <div className="text-xs text-gray-500">{preset.category}</div>
+                  </div>
+                  <div className={`text-lg font-bold ${localBpm === preset.value ? 'text-current' : 'text-gray-600'}`}>
+                    {preset.value}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+  
+  // Renderiza controles compactos
+  const renderCompactControls = () => {
+    if (!compact) return null;
+    
+    return (
+      <div className="flex items-center justify-center gap-2 mt-3">
+        <button
+          onClick={() => adjustBpm(-currentStep)}
+          disabled={disabled}
+          className={`
+            w-8 h-8 rounded-full flex items-center justify-center
+            transition-all duration-200
+            ${disabled 
+              ? 'opacity-50 cursor-not-allowed bg-gray-800/30' 
+              : 'hover:scale-110 active:scale-95 hover:bg-gray-800'
+            }
+            ${theme === 'pro-gold' 
+              ? 'border border-amber-700/30' 
+              : 'border border-gray-700'
+            }
+          `}
+          aria-label={`Diminuir ${currentStep} BPM`}
+        >
+          <Minus size={16} className={disabled ? 'text-gray-500' : 'text-white'} />
+        </button>
+        
+        <button
+          onClick={() => !disabled && setShowStepMenu(!showStepMenu)}
+          disabled={disabled}
+          className={`
+            px-2 py-1 rounded text-xs font-medium
+            transition-colors duration-200
+            ${disabled 
+              ? 'opacity-50 cursor-not-allowed bg-gray-800/30' 
+              : 'hover:bg-gray-800'
+            }
+            ${theme === 'pro-gold' 
+              ? 'border border-amber-700/30' 
+              : 'border border-gray-700'
+            }
+          `}
+        >
+          {currentStep} BPM
+        </button>
+        
+        <button
+          onClick={() => adjustBpm(currentStep)}
+          disabled={disabled}
+          className={`
+            w-8 h-8 rounded-full flex items-center justify-center
+            transition-all duration-200
+            ${disabled 
+              ? 'opacity-50 cursor-not-allowed bg-gray-800/30' 
+              : 'hover:scale-110 active:scale-95 hover:bg-gray-800'
+            }
+            ${theme === 'pro-gold' 
+              ? 'border border-amber-700/30' 
+              : 'border border-gray-700'
+            }
+          `}
+          aria-label={`Aumentar ${currentStep} BPM`}
+        >
+          <Plus size={16} className={disabled ? 'text-gray-500' : 'text-white'} />
+        </button>
+      </div>
+    );
+  };
+  
+  // Renderiza informações de velocidade
+  const renderSpeedInfo = () => {
+    if (compact) return null;
+    
+    const percentage = (localBpm - minBpm) / (maxBpm - minBpm);
+    const msPerBeat = 60000 / localBpm;
+    const msPerMeasure = msPerBeat * 4; // Assumindo 4/4
+    
+    return (
+      <div className="mt-6 grid grid-cols-3 gap-3">
+        <div className="text-center p-3 rounded-lg bg-gray-900/30">
+          <div className="text-xs text-gray-400 mb-1">Velocidade</div>
+          <div className="text-lg font-bold text-white">
+            {percentage < 0.3 ? '🐌 Lenta' : 
+             percentage < 0.6 ? '🚶 Moderada' : 
+             percentage < 0.8 ? '🏃 Rápida' : 
+             '⚡ Extrema'}
+          </div>
+        </div>
+        
+        <div className="text-center p-3 rounded-lg bg-gray-900/30">
+          <div className="text-xs text-gray-400 mb-1">Tempo/Batida</div>
+          <div className="text-lg font-bold text-white">
+            {msPerBeat.toFixed(0)}ms
+          </div>
+        </div>
+        
+        <div className="text-center p-3 rounded-lg bg-gray-900/30">
+          <div className="text-xs text-gray-400 mb-1">Compasso (4/4)</div>
+          <div className="text-lg font-bold text-white">
+            {msPerMeasure.toFixed(0)}ms
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
+  // Fecha menus ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setShowStepMenu(false);
+        setShowPresetsMenu(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   return (
     <div className={`relative ${className}`}>
-      <div className={`rounded-2xl p-6 ${colors.bg} shadow-2xl`}>
-        <div className="flex flex-col items-center">
-          {/* Cabeçalho */}
-          <div className="flex items-center justify-between w-full mb-6">
-            <div>
-              <h2 className="text-lg font-bold text-white">Controle de BPM</h2>
-              <p className="text-sm text-gray-400">Ajuste preciso do tempo</p>
+      <div className={`
+        rounded-2xl p-4
+        ${theme === 'pro-gold' 
+          ? 'bg-gradient-to-br from-gray-900/80 to-gray-950/60 border border-amber-700/20' 
+          : 'bg-gray-900/50 border border-gray-800'
+        }
+      `}>
+        {/* Cabeçalho */}
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <Gauge size={18} className={theme === 'pro-gold' ? 'text-amber-400' : 'text-blue-400'} />
+              <h3 className="font-bold text-white">Controle de BPM</h3>
             </div>
-            
-            {/* Zona de BPM atual */}
-            <div className="text-right">
-              <div className="text-xs text-gray-400">Zona</div>
-              <div className={`font-semibold ${bpmZone.color}`}>
-                {bpmZone.label} {bpmZone.emoji}
-              </div>
+            <div className="text-xs text-gray-400">
+              Ajuste preciso do andamento
             </div>
           </div>
           
-          {/* Dial principal */}
-          <div className="relative mb-8">
-            <div
-              ref={dialRef}
-              className="relative cursor-grab active:cursor-grabbing select-none"
-              onMouseDown={handleDragStart}
-              onTouchStart={handleDragStart}
-            >
-              {renderDialCircle()}
-              
-              {/* Display central */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <div className={`font-bold ${config.fontSize} ${colors.text} mb-1`}>
-                  {formatBpm(bpm)}
-                </div>
-                <div className="text-xs text-gray-400">
-                  {bpmZone.description}
-                </div>
-              </div>
-            </div>
-            
-            {/* Overlay de dragging */}
-            {isDragging && (
-              <div className="absolute inset-0 rounded-full bg-black/20 pointer-events-none" />
-            )}
-          </div>
-          
-          {/* Controles de incremento/decremento */}
-          <div className="flex items-center justify-center gap-4 mb-6">
-            <button
-              onClick={decrementBpm}
-              className={`
-                p-3 rounded-full transition-all duration-200
-                ${colors.button} text-white
-                hover:scale-110 active:scale-95
-                ${isDragging ? 'opacity-50' : ''}
-              `}
-              disabled={isDragging}
-              aria-label={`Diminuir ${currentStep} BPM`}
-            >
-              <Minus size={config.iconSize} />
-            </button>
-            
-            <div className="text-center">
-              <div className="text-sm text-gray-400">Incremento</div>
-              <button
-                onClick={() => setShowStepMenu(!showStepMenu)}
-                className={`
-                  px-4 py-2 rounded-lg transition-all duration-200
-                  ${colors.button} text-white font-semibold
-                  hover:scale-105 active:scale-95
-                `}
-              >
-                {currentStep} BPM
-              </button>
-            </div>
-            
-            <button
-              onClick={incrementBpm}
-              className={`
-                p-3 rounded-full transition-all duration-200
-                ${colors.button} text-white
-                hover:scale-110 active:scale-95
-                ${isDragging ? 'opacity-50' : ''}
-              `}
-              disabled={isDragging}
-              aria-label={`Aumentar ${currentStep} BPM`}
-            >
-              <Plus size={config.iconSize} />
-            </button>
-          </div>
-          
-          {/* Controles adicionais */}
-          <div className="flex items-center justify-center gap-4">
-            {showPresets && (
-              <button
-                onClick={() => setShowPresetsMenu(!showPresetsMenu)}
-                className={`
-                  flex items-center gap-2 px-4 py-2 rounded-lg
-                  transition-all duration-200
-                  ${colors.button} text-white
-                  hover:scale-105 active:scale-95
-                `}
-              >
-                <Music size={16} />
-                <span>Presets</span>
-              </button>
-            )}
-            
-            <button
-              onClick={() => applyBpmPreset(120)}
-              className={`
-                flex items-center gap-2 px-4 py-2 rounded-lg
-                transition-all duration-200
-                ${colors.button} text-white
-                hover:scale-105 active:scale-95
-              `}
-            >
-              <Zap size={16} />
-              <span>Padrão (120)</span>
-            </button>
-          </div>
-          
-          {/* Indicador visual de velocidade */}
-          <div className="mt-6 w-full">
-            <div className="flex justify-between text-xs text-gray-400 mb-1">
-              <span>Lento</span>
-              <span>Moderado</span>
-              <span>Rápido</span>
-            </div>
-            <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-blue-500 via-green-500 to-red-500 transition-all duration-500"
-                style={{
-                  width: `${((bpm - minBpm) / (maxBpm - minBpm)) * 100}%`,
-                }}
-              />
-            </div>
-            <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>{minBpm} BPM</span>
-              <span>{(minBpm + maxBpm) / 2} BPM</span>
-              <span>{maxBpm} BPM</span>
-            </div>
-          </div>
+          {/* Botão de reset */}
+          <button
+            onClick={() => setBpm(120)}
+            disabled={disabled}
+            className={`
+              p-2 rounded-lg transition-all duration-200
+              ${disabled 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:scale-110 active:scale-95 hover:bg-gray-800'
+              }
+            `}
+            aria-label="Resetar para 120 BPM"
+          >
+            <RotateCcw size={16} className={disabled ? 'text-gray-500' : 'text-gray-400'} />
+          </button>
         </div>
         
-        {/* Efeitos de fundo */}
-        <div className="absolute -inset-4 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-3xl blur-xl -z-10" />
+        {/* Dial principal */}
+        <div className="relative aspect-square max-w-md mx-auto">
+          {renderDial()}
+        </div>
+        
+        {/* Controles de ajuste */}
+        {renderFineControls()}
+        {renderCompactControls()}
+        
+        {/* Presets de BPM */}
+        {renderPresets()}
+        
+        {/* Informações de velocidade */}
+        {renderSpeedInfo()}
+        
+        {/* Indicador de arrastando */}
+        {isDragging && (
+          <div className="absolute inset-0 bg-black/10 rounded-2xl pointer-events-none flex items-center justify-center">
+            <div className="px-4 py-2 bg-black/70 rounded-lg backdrop-blur-sm">
+              <div className="text-white text-sm font-medium">
+                Arrastando: {Math.round(localBpm)} BPM
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
-      {/* Menus dropdown */}
-      {renderPresetsMenu()}
-      {renderStepMenu()}
-      
-      {/* Overlay para fechar menus */}
-      {(showPresetsMenu || showStepMenu) && (
+      {/* Overlay para menus */}
+      {(showStepMenu || showPresetsMenu) && !disabled && (
         <div
           className="fixed inset-0 z-40"
           onClick={() => {
-            setShowPresetsMenu(false);
             setShowStepMenu(false);
+            setShowPresetsMenu(false);
           }}
         />
       )}
-      
-      {/* Estilos de animação */}
-      <style jsx>{`
-        @keyframes pulse-subtle {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-        
-        .animate-pulse-subtle {
-          animation: pulse-subtle 2s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };
 
-// Propriedades padrão
-BpmDial.defaultProps = {
-  bpm: 120,
-  minBpm: 40,
-  maxBpm: 300,
-  step: 5,
-  theme: 'default',
-  showPresets: true,
-  showStepSelector: true,
-  animated: true,
-  size: 'lg',
-  className: '',
+// Helper para obter informações de tempo
+export const getTempoInfo = (bpm) => {
+  const marking = TEMPO_MARKINGS.find(m => bpm >= m.min && bpm <= m.max) || 
+                  TEMPO_MARKINGS[TEMPO_MARKINGS.length - 1];
+  
+  const msPerBeat = 60000 / bpm;
+  const beatsPerSecond = bpm / 60;
+  
+  return {
+    marking,
+    msPerBeat,
+    beatsPerSecond,
+    humanReadable: `${bpm} BPM (${marking.label})`,
+    isExtreme: bpm < 50 || bpm > 200,
+    category: bpm < 80 ? 'slow' : bpm < 140 ? 'medium' : 'fast'
+  };
+};
+
+// Helper para ajuste relativo
+export const adjustBpmRelative = (currentBpm, percentage, min = 20, max = 300) => {
+  const delta = (max - min) * (percentage / 100);
+  const newBpm = currentBpm + delta;
+  return Math.max(min, Math.min(max, newBpm));
+};
+
+// Helper para snap para valores comuns
+export const snapToCommonBpm = (bpm, tolerance = 5) => {
+  const commonBpms = BPM_PRESETS.map(p => p.value);
+  const exactMatch = commonBpms.find(cb => Math.abs(cb - bpm) < tolerance);
+  
+  if (exactMatch) {
+    return exactMatch;
+  }
+  
+  // Snap para múltiplos de 5
+  return Math.round(bpm / 5) * 5;
 };
 
 export default React.memo(BpmDial);
