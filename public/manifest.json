@@ -1,102 +1,26 @@
 {
-  "name": "Rhythm Trainer",
-  "short_name": "RhythmTrainer",
-  "description": "Treinador rítmico profissional para músicos de todos os níveis",
-  "start_url": "/",
-  "display": "standalone",
-  "orientation": "landscape-primary",
-  "background_color": "#0f172a",
-  "theme_color": "#3B82F6",
-  "categories": ["music", "education", "productivity"],
+  "short_name": "Rhythm Trainer",
+  "name": "Rhythm Trainer PRO",
+  "description": "Metrônomo inteligente para treino rítmico avançado",
   "icons": [
     {
-      "src": "/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-192x192.png",
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzNiODJmNiI+PHBhdGggZD0iTTEyIDN2MTAuNTVjLS41OS0uMzQtMS4yNy0uNTUtMi0uNTUtMi4yMSAwLTQgMS43OS00IDRzMS43OSA0IDQgNCA0LTEuNzkgNC00VjdoNFYzaC02eiIvPjwvc3ZnPg==",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512x512.png",
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0iIzNiODJmNiI+PHBhdGggZD0iTTI0IDZWMTljLTEuMjMtLjcxLTIuNjctMS4xNS00LjI1LTEuMTVDMTUuMjIgMTcuODUgMTIgMjEuNDQgMTIgMjUuNzVDMTIgMzIuNTIgMTcuNDggMzggMjQgMzhzMTItNS40OCAxMi0xMi4yNXYtOC41aC04VjZIMjR6bTEyIDcuNzV2Mi41aDR2LTUuNWgtOHYyLjVoNHoiLz48L3N2Zz4=",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshot-desktop.png",
-      "sizes": "1920x1080",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Rhythm Trainer - Visão Desktop"
-    },
-    {
-      "src": "/screenshot-mobile.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Rhythm Trainer - Visão Mobile"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Novo Exercício",
-      "short_name": "Novo",
-      "description": "Criar um novo exercício rítmico",
-      "url": "/?action=new",
-      "icons": [{ "src": "/shortcut-new.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "Meus Presets",
-      "short_name": "Presets",
-      "description": "Acessar meus presets salvos",
-      "url": "/?view=presets",
-      "icons": [{ "src": "/shortcut-presets.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "Modo PRO",
-      "short_name": "PRO",
-      "description": "Acessar features avançadas",
-      "url": "/?mode=pro",
-      "icons": [{ "src": "/shortcut-pro.png", "sizes": "96x96" }]
-    }
-  ],
-  "prefer_related_applications": false,
-  "related_applications": []
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "categories": ["music", "education", "productivity"]
 }
