@@ -1,19 +1,18 @@
-// Registrar Service Worker
+// Register Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('/service-worker.js')
       .then(registration => {
         console.log('Service Worker registrado com sucesso:', registration.scope);
         
-        // Verificar atualizações
+        // Check for updates
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // Nova versão disponível
-              if (confirm('Nova versão disponível! Recarregar para atualizar?')) {
-                window.location.reload();
-              }
+              // New version available
+              const updateEvent = new CustomEvent('pwaUpdateAvailable');
+              window.dispatchEvent(updateEvent);
             }
           });
         });
@@ -24,11 +23,23 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// Detectar modo offline
+// Detect offline/online
 window.addEventListener('offline', () => {
-  document.dispatchEvent(new CustomEvent('offlineStatus', { detail: false }));
+  document.dispatchEvent(new CustomEvent('networkStatus', { detail: false }));
 });
 
 window.addEventListener('online', () => {
-  document.dispatchEvent(new CustomEvent('offlineStatus', { detail: true }));
+  document.dispatchEvent(new CustomEvent('networkStatus', { detail: true }));
+});
+
+// PWA install prompt
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  
+  // Show install button
+  const installEvent = new CustomEvent('pwaInstallAvailable', { detail: e });
+  window.dispatchEvent(installEvent);
 });
