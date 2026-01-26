@@ -80,14 +80,6 @@ class AppErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('Erro no aplicativo:', error, errorInfo);
-    
-    // Report error to analytics if available
-    if (window.gtag) {
-      window.gtag('event', 'exception', {
-        description: error.toString(),
-        fatal: true
-      });
-    }
   }
 
   render() {
@@ -97,8 +89,8 @@ class AppErrorBoundary extends React.Component {
           <div className="max-w-md w-full text-center">
             <div className="p-8 rounded-2xl bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/30 backdrop-blur-xl">
               <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-r from-red-500 to-orange-500 flex items-center justify-center">
-                <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.856-.833-2.464 0L4.232 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
                 </svg>
               </div>
               
@@ -124,13 +116,6 @@ class AppErrorBoundary extends React.Component {
                 >
                   Limpar Cache e Recarregar
                 </button>
-              </div>
-              
-              <div className="mt-6 pt-6 border-t border-white/10">
-                <p className="text-sm text-gray-500 mb-2">Detalhes do erro:</p>
-                <pre className="text-xs bg-black/30 p-3 rounded-lg overflow-auto max-h-32">
-                  {this.state.error?.toString()}
-                </pre>
               </div>
             </div>
           </div>
@@ -168,9 +153,8 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               // New update available
-              if (confirm('📱 Nova versão disponível! Recarregar para atualizar?')) {
-                window.location.reload();
-              }
+              const updateEvent = new CustomEvent('appUpdateAvailable');
+              window.dispatchEvent(updateEvent);
             }
           });
         });
