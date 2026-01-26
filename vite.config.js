@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -17,7 +17,8 @@ export default defineConfig({
     }
   },
   server: {
-    port: 3000,
-    open: true
-  }
+    port: 3000
+  },
+  base: './',
+  publicDir: 'public'
 })
