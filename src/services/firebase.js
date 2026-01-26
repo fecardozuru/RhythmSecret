@@ -1,265 +1,257 @@
-// Configuração e serviços do Firebase para o RhythmSecret
+// /src/services/firebaseAdmin.js
+import { initializeApp, getApps } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInAnonymously, 
-  onAuthStateChanged, 
-  signInWithCustomToken 
-} from 'firebase/auth';
-import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  onSnapshot, 
-  collection 
-} from 'firebase/firestore';
-
-// Configuração do Firebase (as variáveis são injetadas pelo ambiente)
-let app;
-let auth;
-let db;
-let appId;
-
-/**
- * Inicializa o Firebase com as configurações fornecidas
- * @param {Object} config - Configuração do Firebase
- * @param {string} id - ID do aplicativo
- */
-export const initializeFirebase = (config, id) => {
-  try {
-    app = initializeApp(config);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    appId = id || 'rhythm-secret-default';
-    
-    console.log('Firebase inicializado com sucesso');
-    return { app, auth, db, appId };
-  } catch (error) {
-    console.error('Erro ao inicializar Firebase:', error);
-    throw error;
-  }
+// Configuração do Firebase
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-/**
- * Configuração padrão (para fallback)
- */
-const FALLBACK_CONFIG = {
-  apiKey: "fallback-api-key",
-  authDomain: "rhythm-secret-fallback.firebaseapp.com",
-  projectId: "rhythm-secret-fallback",
-  storageBucket: "rhythm-secret-fallback.appspot.com",
-  messagingSenderId: "000000000000",
-  appId: "1:000000000000:web:aaaaaaaaaaaaaaaaaaaa"
-};
+// Inicializar Firebase
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
 
-/**
- * Inicializa autenticação automática
- * @param {string} customToken - Token customizado (opcional)
- */
-export const initializeAuth = async (customToken) => {
-  try {
-    if (customToken && customToken !== 'undefined') {
-      await signInWithCustomToken(auth, customToken);
-      console.log('Autenticado com token customizado');
-    } else {
-      await signInAnonymously(auth);
-      console.log('Autenticado anonimamente');
-    }
-  } catch (error) {
-    console.error('Erro na autenticação:', error);
-    // Em caso de erro, tenta autenticação anônima como fallback
-    try {
-      await signInAnonymously(auth);
-      console.log('Fallback para autenticação anônima bem sucedido');
-    } catch (fallbackError) {
-      console.error('Erro no fallback de autenticação:', fallbackError);
-      throw fallbackError;
-    }
-  }
-};
-
-/**
- * Observa mudanças no estado de autenticação
- * @param {Function} callback - Função chamada quando o estado muda
- */
-export const watchAuthState = (callback) => {
-  if (!auth) {
-    console.warn('Firebase auth não inicializado');
-    return () => {};
-  }
-  
-  const unsubscribe = onAuthStateChanged(auth, (user) => {
-    console.log('Estado de autenticação alterado:', user ? 'Usuário logado' : 'Usuário deslogado');
-    callback(user);
-  });
-  
-  return unsubscribe;
-};
-
-/**
- * Obtém referência à coleção de presets do usuário
- * @param {string} userId - ID do usuário
- */
-export const getUserPresetsRef = (userId) => {
-  if (!db || !appId) {
-    throw new Error('Firebase não inicializado');
-  }
-  
-  return collection(db, 'artifacts', appId, 'users', userId, 'presets');
-};
-
-/**
- * Salva um preset na coleção do usuário
- * @param {string} userId - ID do usuário
- * @param {string} slotId - ID do slot (ex: "slot1")
- * @param {Object} data - Dados do preset a serem salvos
- */
-export const savePreset = async (userId, slotId, data) => {
-  if (!db || !appId) {
-    throw new Error('Firebase não inicializado');
-  }
-  
-  try {
-    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'presets', slotId);
-    
-    const presetData = {
-      ...data,
-      timestamp: Date.now(),
-      version: '1.0.0'
-    };
-    
-    await setDoc(docRef, presetData);
-    console.log(`Preset salvo: ${slotId}`, presetData);
-    
-    return { success: true, slotId, timestamp: presetData.timestamp };
-  } catch (error) {
-    console.error('Erro ao salvar preset:', error);
-    throw error;
-  }
-};
-
-/**
- * Observa mudanças na coleção de presets
- * @param {string} userId - ID do usuário
- * @param {Function} callback - Função chamada quando há mudanças
- */
-export const watchPresets = (userId, callback) => {
-  if (!db || !appId) {
-    console.warn('Firebase não inicializado para watchPresets');
-    return () => {};
-  }
-  
-  try {
-    const presetsRef = getUserPresetsRef(userId);
-    
-    const unsubscribe = onSnapshot(presetsRef, (snapshot) => {
-      const presets = {};
-      
-      snapshot.forEach((doc) => {
-        presets[doc.id] = {
-          id: doc.id,
-          ...doc.data()
-        };
-      });
-      
-      console.log('Presets atualizados:', Object.keys(presets).length, 'itens');
-      callback(presets);
-    }, (error) => {
-      console.error('Erro ao observar presets:', error);
-    });
-    
-    return unsubscribe;
-  } catch (error) {
-    console.error('Erro ao configurar watchPresets:', error);
-    return () => {};
-  }
-};
-
-/**
- * Carrega um preset específico
- * @param {Object} presets - Objeto de presets
- * @param {string} slotId - ID do slot (ex: "slot1")
- */
-export const loadPresetData = (presets, slotId) => {
-  const preset = presets[slotId];
-  
-  if (!preset) {
-    console.log(`Slot ${slotId} não encontrado`);
-    return null;
-  }
-  
-  console.log(`Carregando preset: ${slotId}`, preset);
-  return preset;
-};
-
-/**
- * Formata dados de preset para salvar
- * @param {Object} state - Estado atual do aplicativo
- */
-export const formatPresetData = (state) => ({
-  // Configurações básicas
-  bpm: state.bpm,
-  playMode: state.playMode,
-  barsPerLoop: state.barsPerLoop,
-  
-  // Configurações musicais
-  timeSignature: state.timeSignature,
-  targetSubdivision: state.targetSubdivision,
-  noteVolumes: [...state.noteVolumes], // Cópia do array
-  
-  // Recursos PRO
-  isPermutationEnabled: state.isPermutationEnabled,
-  isGhostModeEnabled: state.isGhostModeEnabled,
-  isGapEnabled: state.isGapEnabled,
-  isAutoLoopActive: state.isAutoLoopActive,
-  
-  // Metadados
-  name: `${state.bpm}BPM ${state.timeSignature.name}`,
-  appMode: state.appMode,
-  themeId: state.currentTheme?.id || 'INSTAGRAM'
+// Configurar provedor do Google
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
 });
 
-/**
- * Verifica se o Firebase está inicializado
- */
-export const isFirebaseInitialized = () => {
-  return !!(app && auth && db);
-};
+// Coleções do Firestore
+const WHITELIST_COLLECTION = 'admin_whitelist';
+const USER_COLLECTION = 'users';
+
+// Emails administradores pré-aprovados (você pode adicionar o seu aqui)
+const DEFAULT_ADMINS = [
+  'seu-email@gmail.com',  // Substitua pelo seu email
+  'admin@seudominio.com'  // Outros emails admin
+];
 
 /**
- * Obtém instâncias do Firebase (para uso em outros módulos)
+ * Verifica se um email está na whitelist
+ * @param {string} email - Email do usuário
+ * @returns {Promise<boolean>} - True se estiver na whitelist
  */
-export const getFirebaseInstances = () => {
-  if (!isFirebaseInitialized()) {
-    throw new Error('Firebase não inicializado');
-  }
-  
-  return { app, auth, db, appId };
-};
-
-/**
- * Limpa todos os dados locais (para desenvolvimento/testes)
- */
-export const clearLocalData = async () => {
-  if (auth && auth.currentUser) {
-    console.log('Dados locais limpos');
-    // Em uma implementação real, você pode querer limpar cache ou localStorage
-  }
-};
-
-// Inicialização automática se as variáveis globais existirem
-if (typeof window !== 'undefined') {
-  if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-    try {
-      const config = JSON.parse(__firebase_config);
-      const id = typeof __app_id !== 'undefined' ? __app_id : 'rhythm-secret-web';
-      initializeFirebase(config, id);
-    } catch (error) {
-      console.error('Erro na inicialização automática do Firebase:', error);
+export const isUserInWhitelist = async (email) => {
+  try {
+    // Primeiro verifica nos administradores padrão
+    if (DEFAULT_ADMINS.includes(email.toLowerCase())) {
+      return { inWhitelist: true, isAdmin: true };
     }
-  }
-}
 
-// Exporta as instâncias principais
-export { app, auth, db, appId };
+    // Busca no Firestore
+    const whitelistRef = collection(db, WHITELIST_COLLECTION);
+    const q = query(whitelistRef, where('email', '==', email.toLowerCase()));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const userData = querySnapshot.docs[0].data();
+      return { 
+        inWhitelist: true, 
+        isAdmin: userData.isAdmin || false,
+        userData 
+      };
+    }
+    
+    return { inWhitelist: false, isAdmin: false };
+  } catch (error) {
+    console.error('Erro ao verificar whitelist:', error);
+    return { inWhitelist: false, isAdmin: false };
+  }
+};
+
+/**
+ * Login com Google
+ * @returns {Promise<Object>} - Dados do usuário
+ */
+export const signInWithGoogle = async () => {
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+    
+    // Verifica se está na whitelist
+    const whitelistStatus = await isUserInWhitelist(user.email);
+    
+    if (!whitelistStatus.inWhitelist) {
+      // Se não está na whitelist, faz logout
+      await auth.signOut();
+      throw new Error('Acesso não autorizado. Contate o administrador.');
+    }
+    
+    // Salva/atualiza informações do usuário no Firestore
+    await saveUserData(user, whitelistStatus);
+    
+    return {
+      user,
+      isAdmin: whitelistStatus.isAdmin,
+      whitelistStatus
+    };
+  } catch (error) {
+    console.error('Erro no login:', error);
+    throw error;
+  }
+};
+
+/**
+ * Salva dados do usuário no Firestore
+ */
+const saveUserData = async (user, whitelistStatus) => {
+  try {
+    const userRef = doc(db, USER_COLLECTION, user.uid);
+    const userDoc = await getDoc(userRef);
+    
+    const userData = {
+      uid: user.uid,
+      email: user.email.toLowerCase(),
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      isAdmin: whitelistStatus.isAdmin,
+      lastLogin: new Date().toISOString(),
+      createdAt: userDoc.exists() ? userDoc.data().createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    if (userDoc.exists()) {
+      await updateDoc(userRef, userData);
+    } else {
+      await setDoc(userRef, userData);
+    }
+  } catch (error) {
+    console.error('Erro ao salvar dados do usuário:', error);
+  }
+};
+
+/**
+ * Adiciona um email à whitelist (apenas admin)
+ */
+export const addToWhitelist = async (email, isAdmin = false, addedBy) => {
+  try {
+    // Verifica se quem está adicionando é admin
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Usuário não autenticado');
+    
+    const userDoc = await getDoc(doc(db, USER_COLLECTION, currentUser.uid));
+    if (!userDoc.exists() || !userDoc.data().isAdmin) {
+      throw new Error('Apenas administradores podem adicionar à whitelist');
+    }
+    
+    // Adiciona à whitelist
+    const whitelistRef = doc(db, WHITELIST_COLLECTION, email.toLowerCase());
+    await setDoc(whitelistRef, {
+      email: email.toLowerCase(),
+      isAdmin,
+      addedBy: addedBy || currentUser.email,
+      addedAt: new Date().toISOString(),
+      status: 'active'
+    });
+    
+    return { success: true, email };
+  } catch (error) {
+    console.error('Erro ao adicionar à whitelist:', error);
+    throw error;
+  }
+};
+
+/**
+ * Remove um email da whitelist
+ */
+export const removeFromWhitelist = async (email) => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Usuário não autenticado');
+    
+    const userDoc = await getDoc(doc(db, USER_COLLECTION, currentUser.uid));
+    if (!userDoc.exists() || !userDoc.data().isAdmin) {
+      throw new Error('Apenas administradores podem remover da whitelist');
+    }
+    
+    const whitelistRef = doc(db, WHITELIST_COLLECTION, email.toLowerCase());
+    await updateDoc(whitelistRef, {
+      status: 'removed',
+      removedAt: new Date().toISOString(),
+      removedBy: currentUser.email
+    });
+    
+    return { success: true, email };
+  } catch (error) {
+    console.error('Erro ao remover da whitelist:', error);
+    throw error;
+  }
+};
+
+/**
+ * Lista todos os usuários na whitelist
+ */
+export const getWhitelist = async () => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Usuário não autenticado');
+    
+    const userDoc = await getDoc(doc(db, USER_COLLECTION, currentUser.uid));
+    if (!userDoc.exists() || !userDoc.data().isAdmin) {
+      throw new Error('Apenas administradores podem ver a whitelist');
+    }
+    
+    const whitelistRef = collection(db, WHITELIST_COLLECTION);
+    const q = query(whitelistRef, where('status', '!=', 'removed'));
+    const querySnapshot = await getDocs(q);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Erro ao buscar whitelist:', error);
+    throw error;
+  }
+};
+
+/**
+ * Verifica status do usuário atual
+ */
+export const getCurrentUserStatus = async () => {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return null;
+    
+    const userDoc = await getDoc(doc(db, USER_COLLECTION, currentUser.uid));
+    if (!userDoc.exists()) return null;
+    
+    const userData = userDoc.data();
+    const whitelistStatus = await isUserInWhitelist(currentUser.email);
+    
+    return {
+      ...userData,
+      ...whitelistStatus
+    };
+  } catch (error) {
+    console.error('Erro ao buscar status do usuário:', error);
+    return null;
+  }
+};
+
+/**
+ * Logout
+ */
+export const signOut = async () => {
+  try {
+    await auth.signOut();
+  } catch (error) {
+    console.error('Erro no logout:', error);
+    throw error;
+  }
+};
+
+// Observador de autenticação
+export const onAuthStateChanged = (callback) => {
+  return auth.onAuthStateChanged(callback);
+};
+
+export { auth, db };
