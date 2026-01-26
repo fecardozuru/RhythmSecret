@@ -1,108 +1,206 @@
 // /src/components/ui/VolumeColumn.jsx
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Volume2, Volume1, VolumeX, ChevronUp, ChevronDown } from 'lucide-react';
-import { formatVolume } from '../../utils/formatters';
+import { 
+  Volume2, 
+  Volume1, 
+  Volume, 
+  VolumeX,
+  Zap,
+  Target,
+  Sparkles,
+  Star
+} from 'lucide-react';
 
 /**
- * VolumeColumn - Componente de coluna para grade de volumes
- * Cada coluna representa uma subdivisão com 3 barras de volume + indicador
+ * VolumeColumn - Coluna individual de volume com controles interativos
+ * Suporta padrões especiais para tercinas e outras subdivisões
  */
+
 const VolumeColumn = ({
-  index,
-  volume = 0.5,
+  index = 0,
+  volume = 0.8,
   isActive = true,
   isCurrent = false,
   isAccent = false,
   isGhost = false,
+  isTriplet = false,
+  tripletPosition = 0, // 0, 1, ou 2 para posição na tercina
   onClick,
   onVolumeChange,
-  showLabel = true,
-  columnHeight = 120,
   theme = 'default',
+  columnHeight = 160,
+  showLabel = true,
+  showControls = true,
+  interactive = true,
+  className = '',
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
   const [localVolume, setLocalVolume] = useState(volume);
-  const [showVolumePopup, setShowVolumePopup] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showPeak, setShowPeak] = useState(false);
+  const [pulseAnimation, setPulseAnimation] = useState(false);
   
-  // Atualiza volume local quando prop muda
+  // Efeito para sincronizar com props
   useEffect(() => {
     setLocalVolume(volume);
   }, [volume]);
   
-  // Cores baseadas no tema
-  const themeColors = {
-    default: {
-      active: 'bg-blue-500',
-      inactive: 'bg-gray-300',
-      accent: 'bg-amber-500',
-      ghost: 'bg-gray-400 opacity-60',
-      current: 'ring-2 ring-blue-400 ring-offset-1',
-      text: 'text-gray-800',
-      bg: 'bg-white',
-    },
-    instagram: {
-      active: 'bg-gradient-to-b from-pink-500 to-purple-500',
-      inactive: 'bg-gradient-to-b from-gray-300 to-gray-400',
-      accent: 'bg-gradient-to-b from-orange-500 to-yellow-500',
-      ghost: 'bg-gradient-to-b from-gray-400 to-gray-500 opacity-70',
-      current: 'ring-2 ring-pink-400 ring-offset-1',
-      text: 'text-gray-800',
-      bg: 'bg-white',
-    },
-    tiktok: {
-      active: 'bg-gradient-to-b from-cyan-400 to-blue-500',
-      inactive: 'bg-gradient-to-b from-gray-300 to-gray-400',
-      accent: 'bg-gradient-to-b from-pink-500 to-red-500',
-      ghost: 'bg-gradient-to-b from-gray-400 to-gray-500 opacity-70',
-      current: 'ring-2 ring-cyan-400 ring-offset-1',
-      text: 'text-gray-800',
-      bg: 'bg-gray-900',
-    },
-    'pro-gold': {
-      active: 'bg-gradient-to-b from-amber-400 to-yellow-600',
-      inactive: 'bg-gradient-to-b from-gray-700 to-gray-800',
-      accent: 'bg-gradient-to-b from-amber-600 to-orange-600',
-      ghost: 'bg-gradient-to-b from-gray-600 to-gray-700 opacity-70',
-      current: 'ring-2 ring-amber-400 ring-offset-1 ring-offset-gray-900',
-      text: 'text-amber-100',
-      bg: 'bg-gray-900',
-    },
-  };
+  // Efeito para animação de pulso quando está atual
+  useEffect(() => {
+    if (isCurrent && isActive) {
+      setPulseAnimation(true);
+      const timer = setTimeout(() => setPulseAnimation(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isCurrent, isActive]);
   
-  const colors = themeColors[theme] || themeColors.default;
+  // Efeito para peak meter
+  useEffect(() => {
+    if (isActive && volume > 0) {
+      setShowPeak(true);
+      const timer = setTimeout(() => setShowPeak(false), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [volume, isActive]);
   
-  // Determina a classe de cor baseada no estado
-  const getColorClass = () => {
-    if (!isActive) return colors.inactive;
-    if (isAccent) return colors.accent;
-    if (isGhost) return colors.ghost;
-    return colors.active;
-  };
+  // Calcula altura das barras baseado no volume
+  const calculateBarHeights = useCallback(() => {
+    const heights = [];
+    const maxBars = 4; // Número máximo de barras visíveis
+    
+    // Para volume 0, todas as barras estão em 0
+    if (localVolume <= 0 || !isActive) {
+      return Array(maxBars).fill(0);
+    }
+    
+    // Distribui o volume entre as barras
+    const volumePerBar = localVolume / maxBars;
+    
+    for (let i = 0; i < maxBars; i++) {
+      const barVolume = Math.min(1, volumePerBar * (maxBars - i));
+      heights.push(barVolume);
+    }
+    
+    return heights;
+  }, [localVolume, isActive]);
   
-  // Calcula alturas das barras (3 barras dividindo o volume total)
-  const barHeights = [
-    Math.min(1, localVolume * 3) * (columnHeight / 3), // Barra superior
-    Math.min(1, Math.max(0, localVolume * 3 - 1)) * (columnHeight / 3), // Barra do meio
-    Math.min(1, Math.max(0, localVolume * 3 - 2)) * (columnHeight / 3), // Barra inferior
-  ];
+  // Determina classe de cor baseado no estado e tema
+  const getColorClasses = useCallback(() => {
+    // Cores base para diferentes estados
+    const baseColors = {
+      default: {
+        active: 'bg-blue-500',
+        accent: 'bg-amber-500',
+        ghost: 'bg-gray-500',
+        inactive: 'bg-gray-800',
+        current: 'ring-2 ring-blue-400 ring-offset-2 ring-offset-gray-900',
+        glow: 'shadow-[0_0_15px_rgba(59,130,246,0.5)]',
+      },
+      'pro-gold': {
+        active: 'bg-gradient-to-t from-amber-500 to-yellow-400',
+        accent: 'bg-gradient-to-t from-orange-500 to-amber-400',
+        ghost: 'bg-gradient-to-t from-gray-600 to-gray-500',
+        inactive: 'bg-gradient-to-t from-gray-900 to-gray-800',
+        current: 'ring-2 ring-amber-400 ring-offset-2 ring-offset-gray-950',
+        glow: 'shadow-[0_0_20px_rgba(245,158,11,0.6)]',
+      },
+      'instagram': {
+        active: 'bg-gradient-to-t from-[#E1306C] to-[#F77737]',
+        accent: 'bg-gradient-to-t from-[#833AB4] to-[#FD1D1D]',
+        ghost: 'bg-gradient-to-t from-gray-600 to-gray-500',
+        inactive: 'bg-gradient-to-t from-gray-900 to-gray-800',
+        current: 'ring-2 ring-pink-500 ring-offset-2 ring-offset-gray-900',
+        glow: 'shadow-[0_0_15px_rgba(225,48,108,0.5)]',
+      }
+    };
+    
+    const colors = baseColors[theme] || baseColors.default;
+    
+    // Determina qual classe usar
+    if (!isActive) {
+      return {
+        bar: colors.inactive,
+        current: '',
+        glow: '',
+        icon: 'text-gray-600',
+      };
+    }
+    
+    if (isGhost) {
+      return {
+        bar: colors.ghost,
+        current: isCurrent ? colors.current : '',
+        glow: isCurrent ? colors.glow : '',
+        icon: 'text-gray-400',
+      };
+    }
+    
+    if (isAccent) {
+      return {
+        bar: colors.accent,
+        current: isCurrent ? colors.current : '',
+        glow: isCurrent ? colors.glow : '',
+        icon: 'text-amber-400',
+      };
+    }
+    
+    return {
+      bar: colors.active,
+      current: isCurrent ? colors.current : '',
+      glow: isCurrent ? colors.glow : '',
+      icon: 'text-blue-400',
+    };
+  }, [theme, isActive, isAccent, isGhost, isCurrent]);
+  
+  // Determina ícone baseado no volume
+  const getVolumeIcon = useCallback(() => {
+    if (!isActive || localVolume <= 0) {
+      return VolumeX;
+    }
+    
+    if (localVolume <= 0.3) {
+      return Volume1;
+    }
+    
+    if (localVolume <= 0.7) {
+      return Volume2;
+    }
+    
+    return Volume;
+  }, [localVolume, isActive]);
   
   // Manipulador de clique na coluna
   const handleClick = useCallback((e) => {
     e.stopPropagation();
     
+    if (!interactive) return;
+    
+    // Alterna entre ativo/inativo se for clique simples
     if (onClick) {
       onClick(index);
     }
-    
-    // Alterna popup de volume se segurar Shift
-    if (e.shiftKey) {
-      setShowVolumePopup(!showVolumePopup);
-    }
-  }, [index, onClick, showVolumePopup]);
+  }, [index, onClick, interactive]);
   
-  // Manipulador de início de drag
+  // Manipulador de clique direito para resetar volume
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!interactive) return;
+    
+    // Reset para volume padrão
+    const newVolume = 0.8;
+    setLocalVolume(newVolume);
+    
+    if (onVolumeChange) {
+      onVolumeChange(index, newVolume);
+    }
+  }, [index, onVolumeChange, interactive]);
+  
+  // Manipulador de arrastar para ajustar volume
   const handleMouseDown = useCallback((e) => {
+    if (!interactive || !isActive) return;
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -110,11 +208,15 @@ const VolumeColumn = ({
     
     const startY = e.clientY;
     const startVolume = localVolume;
+    const columnHeight = e.currentTarget.clientHeight;
     
     const handleMouseMove = (moveEvent) => {
       const deltaY = startY - moveEvent.clientY;
-      const sensitivity = 0.005;
-      const newVolume = Math.max(0, Math.min(1, startVolume + deltaY * sensitivity));
+      const volumeDelta = deltaY / columnHeight;
+      let newVolume = startVolume + volumeDelta;
+      
+      // Limita entre 0 e 1
+      newVolume = Math.max(0, Math.min(1, newVolume));
       
       setLocalVolume(newVolume);
       
@@ -131,22 +233,30 @@ const VolumeColumn = ({
     
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  }, [index, localVolume, onVolumeChange]);
+  }, [index, localVolume, isActive, interactive, onVolumeChange]);
   
-  // Manipulador para toque em dispositivos móveis
+  // Manipulador de toque para mobile
   const handleTouchStart = useCallback((e) => {
+    if (!interactive || !isActive) return;
+    
     e.preventDefault();
     e.stopPropagation();
     
     setIsDragging(true);
     
-    const startY = e.touches[0].clientY;
+    const touch = e.touches[0];
+    const startY = touch.clientY;
     const startVolume = localVolume;
+    const columnHeight = e.currentTarget.clientHeight;
     
     const handleTouchMove = (moveEvent) => {
-      const deltaY = startY - moveEvent.touches[0].clientY;
-      const sensitivity = 0.01;
-      const newVolume = Math.max(0, Math.min(1, startVolume + deltaY * sensitivity));
+      const touch = moveEvent.touches[0];
+      const deltaY = startY - touch.clientY;
+      const volumeDelta = deltaY / columnHeight;
+      let newVolume = startVolume + volumeDelta;
+      
+      // Limita entre 0 e 1
+      newVolume = Math.max(0, Math.min(1, newVolume));
       
       setLocalVolume(newVolume);
       
@@ -161,294 +271,251 @@ const VolumeColumn = ({
       document.removeEventListener('touchend', handleTouchEnd);
     };
     
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchmove', handleTouchMove);
     document.addEventListener('touchend', handleTouchEnd);
-  }, [index, localVolume, onVolumeChange]);
+  }, [index, localVolume, isActive, interactive, onVolumeChange]);
   
-  // Manipulador para incremento/decremento rápido
-  const handleVolumeAdjust = useCallback((direction) => {
-    const step = 0.1;
-    const newVolume = direction === 'up' 
-      ? Math.min(1, localVolume + step)
-      : Math.max(0, localVolume - step);
+  // Efeito visual para posição na tercina
+  const getTripletIndicator = useCallback(() => {
+    if (!isTriplet) return null;
     
-    setLocalVolume(newVolume);
+    const positions = [
+      { label: '1ª', color: 'bg-amber-500', symbol: '❶' },
+      { label: '2ª', color: 'bg-amber-400', symbol: '❷' },
+      { label: '3ª', color: 'bg-amber-300', symbol: '❸' },
+    ];
     
-    if (onVolumeChange) {
-      onVolumeChange(index, newVolume);
-    }
-  }, [index, localVolume, onVolumeChange]);
+    const position = positions[tripletPosition] || positions[0];
+    
+    return (
+      <div className={`
+        absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center
+        ${position.color} text-[10px] font-black text-black shadow-lg
+        animate-pulse
+      `}>
+        {position.symbol}
+      </div>
+    );
+  }, [isTriplet, tripletPosition]);
   
-  // Ícone de volume baseado no nível
-  const getVolumeIcon = () => {
-    if (localVolume === 0) return <VolumeX size={14} />;
-    if (localVolume < 0.3) return <Volume1 size={14} />;
-    return <Volume2 size={14} />;
+  // Barra de peak meter
+  const renderPeakMeter = () => {
+    if (!showPeak || !isActive) return null;
+    
+    return (
+      <div className="absolute top-0 left-0 right-0">
+        <div 
+          className={`
+            h-1 rounded-t-lg transition-all duration-100
+            ${isAccent ? 'bg-amber-400' : 'bg-blue-400'}
+            ${pulseAnimation ? 'opacity-100' : 'opacity-80'}
+          `}
+          style={{
+            width: `${localVolume * 100}%`,
+          }}
+        />
+      </div>
+    );
   };
   
-  // Classe para indicador de passo atual
-  const currentIndicatorClass = isCurrent 
-    ? `${colors.current} ${isActive ? 'opacity-100' : 'opacity-60'}`
-    : 'opacity-0';
+  // Indicador visual de arrastar
+  const renderDragIndicator = () => {
+    if (!isDragging) return null;
+    
+    return (
+      <div className="absolute inset-0 border-2 border-dashed border-white/50 rounded-lg pointer-events-none" />
+    );
+  };
   
-  // Classe para estado de dragging
-  const draggingClass = isDragging ? 'scale-95 brightness-110' : '';
+  // Ícone de volume
+  const VolumeIcon = getVolumeIcon();
+  const colorClasses = getColorClasses();
+  const barHeights = calculateBarHeights();
   
   return (
-    <div className="flex flex-col items-center relative group">
-      {/* Container principal da coluna */}
-      <div
-        className={`
-          relative w-12 md:w-14 rounded-lg cursor-pointer
-          transition-all duration-150 ease-out
-          hover:scale-105 hover:shadow-lg
-          active:scale-95
-          ${draggingClass}
-          ${isActive ? 'shadow-md' : 'shadow-sm opacity-80'}
-          ${colors.bg}
-        `}
-        onClick={handleClick}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
-        role="slider"
-        aria-label={`Subdivisão ${index + 1}, volume ${formatVolume(localVolume, 'percent')}`}
-        aria-valuenow={localVolume * 100}
-        aria-valuemin="0"
-        aria-valuemax="100"
-        tabIndex="0"
-      >
-        {/* Indicador de passo atual (animações) */}
-        <div
-          className={`
-            absolute -top-2 left-1/2 transform -translate-x-1/2
-            w-3 h-3 rounded-full transition-all duration-300
-            ${currentIndicatorClass}
-          `}
-        >
-          {/* Animação de pulso quando é o passo atual */}
-          {isCurrent && isActive && (
-            <div className="absolute inset-0 rounded-full animate-ping bg-current opacity-40" />
+    <div 
+      className={`
+        relative flex flex-col items-center justify-end
+        min-w-[50px] max-w-[80px] rounded-lg
+        transition-all duration-200 select-none
+        ${interactive && isActive ? 'cursor-pointer' : 'cursor-default'}
+        ${isCurrent ? 'scale-105 -translate-y-1 z-10' : 'hover:scale-[1.02]'}
+        ${pulseAnimation ? 'animate-pulse' : ''}
+        ${colorClasses.current}
+        ${colorClasses.glow}
+        ${isDragging ? 'brightness-125' : ''}
+        ${className}
+      `}
+      style={{ height: columnHeight }}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
+      role="slider"
+      aria-label={`Coluna ${index + 1}, volume ${Math.round(localVolume * 100)}%`}
+      aria-valuenow={localVolume * 100}
+      aria-valuemin="0"
+      aria-valuemax="100"
+      tabIndex={interactive ? 0 : -1}
+    >
+      {/* Indicador de posição na tercina */}
+      {getTripletIndicator()}
+      
+      {/* Peak meter */}
+      {renderPeakMeter()}
+      
+      {/* Indicador de arrastar */}
+      {renderDragIndicator()}
+      
+      {/* Barras de volume */}
+      <div className="w-full flex-1 flex flex-col justify-end gap-1 p-2">
+        {barHeights.map((height, barIndex) => (
+          <div
+            key={`bar-${barIndex}`}
+            className={`
+              w-full rounded-sm transition-all duration-300
+              ${colorClasses.bar}
+              ${barIndex === 0 && isAccent ? 'shadow-lg' : ''}
+            `}
+            style={{
+              height: `${height * 60}%`,
+              minHeight: '4px',
+              opacity: height > 0 ? 0.8 + (height * 0.2) : 0.3,
+              transform: isCurrent ? 'scaleX(1.05)' : 'scaleX(1)',
+              transition: 'height 0.3s ease-out, opacity 0.3s ease-out',
+            }}
+          />
+        ))}
+      </div>
+      
+      {/* Controles e informações */}
+      <div className="w-full p-2 pt-1">
+        {/* Indicador visual para acentos */}
+        {isAccent && (
+          <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+            <div className="flex items-center gap-0.5">
+              {[...Array(3)].map((_, i) => (
+                <div
+                  key={`sparkle-${i}`}
+                  className={`
+                    w-1 h-1 rounded-full animate-pulse
+                    ${theme === 'pro-gold' ? 'bg-amber-400' : 'bg-yellow-400'}
+                  `}
+                  style={{
+                    animationDelay: `${i * 0.1}s`,
+                    opacity: 0.6 + (i * 0.1),
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Número/ícone da coluna */}
+        <div className={`
+          flex items-center justify-center gap-1
+          text-xs font-bold transition-colors
+          ${isActive ? colorClasses.icon : 'text-gray-600'}
+          ${isCurrent ? 'scale-110' : ''}
+        `}>
+          {showControls && isActive ? (
+            <VolumeIcon size={showLabel ? 12 : 14} />
+          ) : (
+            <div className="w-2 h-2 rounded-full bg-current" />
+          )}
+          
+          {showLabel && (
+            <span className={isGhost ? 'opacity-60' : ''}>
+              {index + 1}
+            </span>
           )}
         </div>
         
-        {/* Barras de volume (3 barras verticais) */}
-        <div className="relative h-full p-1">
-          <div className="flex flex-col h-full justify-end space-y-1">
-            {barHeights.map((height, barIndex) => (
-              <div
-                key={barIndex}
-                className={`
-                  w-full rounded-sm transition-all duration-200
-                  ${getColorClass()}
-                  ${barIndex === 0 ? 'rounded-t-md' : ''}
-                  ${barIndex === 2 ? 'rounded-b-md' : ''}
-                `}
-                style={{ height: `${height}px` }}
-              >
-                {/* Efeito de brilho nas barras */}
-                {isActive && height > 0 && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent rounded-sm" />
-                )}
-              </div>
-            ))}
+        {/* Indicador visual de volume */}
+        <div className="mt-1 flex justify-center">
+          <div className="flex items-center gap-0.5">
+            {[...Array(4)].map((_, i) => {
+              const isLit = i < Math.ceil(localVolume * 4);
+              
+              return (
+                <div
+                  key={`dot-${i}`}
+                  className={`
+                    w-1 h-1 rounded-full transition-all duration-200
+                    ${isLit 
+                      ? (isAccent ? 'bg-amber-400' : 'bg-blue-400') 
+                      : 'bg-gray-700'
+                    }
+                  `}
+                />
+              );
+            })}
           </div>
         </div>
         
-        {/* Indicador de arrastar */}
-        <div
-          className={`
-            absolute -bottom-2 left-1/2 transform -translate-x-1/2
-            w-6 h-1 rounded-full transition-opacity duration-200
-            ${isDragging ? 'opacity-100' : 'opacity-0 group-hover:opacity-60'}
-            ${getColorClass()}
-          `}
-        />
+        {/* Indicador visual para notas fantasmas */}
+        {isGhost && isActive && (
+          <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
+            <div className="flex items-center gap-0.5">
+              {[...Array(2)].map((_, i) => (
+                <div
+                  key={`ghost-${i}`}
+                  className="w-1 h-1 rounded-full bg-gray-500/60 animate-pulse"
+                  style={{ animationDelay: `${i * 0.3}s` }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
         
-        {/* Overlay de dragging */}
-        {isDragging && (
-          <div className="absolute inset-0 bg-black/10 rounded-lg" />
+        {/* Tooltip visual para arrastar */}
+        {interactive && isActive && (
+          <div className={`
+            absolute bottom-full mb-1 left-1/2 transform -translate-x-1/2
+            px-2 py-1 rounded text-xs font-medium whitespace-nowrap
+            bg-gray-900 border border-gray-700 shadow-lg opacity-0
+            group-hover:opacity-100 transition-opacity duration-200 pointer-events-none
+            ${isDragging ? 'opacity-100' : ''}
+          `}>
+            <div className="flex items-center gap-1">
+              <span>Volume:</span>
+              <span className="font-bold">{Math.round(localVolume * 100)}%</span>
+            </div>
+            <div className="text-[10px] text-gray-400 mt-0.5">
+              {isDragging ? 'Solte para confirmar' : 'Arraste para ajustar'}
+            </div>
+          </div>
         )}
       </div>
       
-      {/* Label da subdivisão */}
-      {showLabel && (
-        <div className="mt-2 flex flex-col items-center">
-          <span className={`
-            text-xs font-semibold transition-colors duration-200
-            ${isActive ? colors.text : 'text-gray-400'}
-            ${isCurrent ? 'scale-110 font-bold' : ''}
-          `}>
-            {index + 1}
-          </span>
-          
-          {/* Indicador visual de volume */}
-          <div className="flex items-center gap-1 mt-1">
-            {getVolumeIcon()}
-            <span className="text-xs text-gray-500">
-              {formatVolume(localVolume, 'percent')}
-            </span>
-          </div>
-        </div>
+      {/* Efeito de brilho para coluna atual */}
+      {isCurrent && (
+        <div className="absolute -inset-1 rounded-lg bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none" />
       )}
       
-      {/* Controles de ajuste rápido (aparecem no hover) */}
-      <div className={`
-        absolute -top-10 left-1/2 transform -translate-x-1/2
-        flex flex-col items-center opacity-0 group-hover:opacity-100
-        transition-opacity duration-200 pointer-events-none
-      `}>
-        <div className="flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-1 pointer-events-auto">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleVolumeAdjust('up');
-            }}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            aria-label={`Aumentar volume da subdivisão ${index + 1}`}
-          >
-            <ChevronUp size={16} className="text-gray-600 dark:text-gray-300" />
-          </button>
-          
-          <div className="w-12 text-center">
-            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-              {formatVolume(localVolume, 'percent')}
-            </span>
-          </div>
-          
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleVolumeAdjust('down');
-            }}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            aria-label={`Diminuir volume da subdivisão ${index + 1}`}
-          >
-            <ChevronDown size={16} className="text-gray-600 dark:text-gray-300" />
-          </button>
-        </div>
-        
-        {/* Seta para baixo */}
-        <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-white dark:border-t-gray-800" />
-      </div>
-      
-      {/* Popup de volume detalhado */}
-      {showVolumePopup && (
-        <div
-          className="
-            absolute -top-24 left-1/2 transform -translate-x-1/2
-            bg-white dark:bg-gray-800 rounded-lg shadow-xl p-3
-            z-50 min-w-[140px]
-          "
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="text-center mb-2">
-            <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-200">
-              Subdivisão {index + 1}
-            </h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Ajuste preciso de volume
-            </p>
-          </div>
-          
-          {/* Slider de volume preciso */}
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={localVolume * 100}
-            onChange={(e) => {
-              const newVolume = parseInt(e.target.value) / 100;
-              setLocalVolume(newVolume);
-              if (onVolumeChange) {
-                onVolumeChange(index, newVolume);
-              }
-            }}
-            className="
-              w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg
-              appearance-none cursor-pointer
-              [&::-webkit-slider-thumb]:appearance-none
-              [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4
-              [&::-webkit-slider-thumb]:rounded-full
-              [&::-webkit-slider-thumb]:bg-blue-500 dark:[&::-webkit-slider-thumb]:bg-blue-400
-              [&::-webkit-slider-thumb]:cursor-pointer
-            "
-            aria-label={`Volume preciso da subdivisão ${index + 1}`}
-          />
-          
-          <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2">
-            <span>0%</span>
-            <span className="font-semibold">{formatVolume(localVolume, 'percent')}</span>
-            <span>100%</span>
-          </div>
-          
-          {/* Botões de ação */}
-          <div className="flex justify-between mt-3">
-            <button
-              onClick={() => {
-                setLocalVolume(0);
-                if (onVolumeChange) onVolumeChange(index, 0);
-              }}
-              className="
-                text-xs px-2 py-1 rounded
-                bg-gray-100 dark:bg-gray-700
-                hover:bg-gray-200 dark:hover:bg-gray-600
-                transition-colors
-              "
-            >
-              Silenciar
-            </button>
-            
-            <button
-              onClick={() => {
-                setLocalVolume(1);
-                if (onVolumeChange) onVolumeChange(index, 1);
-              }}
-              className="
-                text-xs px-2 py-1 rounded
-                bg-gray-100 dark:bg-gray-700
-                hover:bg-gray-200 dark:hover:bg-gray-600
-                transition-colors
-              "
-            >
-              Máximo
-            </button>
-          </div>
-        </div>
+      {/* Efeito de destaque para acentos */}
+      {isAccent && (
+        <div className="absolute -inset-1 rounded-lg bg-gradient-to-br from-transparent via-amber-500/10 to-transparent pointer-events-none animate-pulse" />
       )}
       
-      {/* Tooltip informativo */}
-      <div className={`
-        absolute -bottom-12 left-1/2 transform -translate-x-1/2
-        bg-gray-900 text-white text-xs rounded py-1 px-2
-        opacity-0 group-hover:opacity-100 transition-opacity duration-200
-        pointer-events-none whitespace-nowrap z-10
-      `}>
-        <div className="flex items-center gap-1">
-          <span>Subdivisão {index + 1}</span>
-          {isAccent && (
-            <span className="text-amber-300">● Acento</span>
-          )}
-          {isGhost && (
-            <span className="text-gray-300">○ Fantasma</span>
-          )}
-        </div>
-        <div className="text-gray-300">
-          {formatVolume(localVolume, 'percent')} • {formatVolume(localVolume, 'db')}
-        </div>
-        <div className="text-gray-400 text-[10px] mt-1">
-          Clique: alternar • Arraste: ajustar • Shift+Clique: menu
-        </div>
-      </div>
-      
-      {/* Estilos de animação */}
+      {/* Estilos de animação específicos */}
       <style jsx>{`
-        @keyframes pulse-subtle {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
+        @keyframes pulse-soft {
+          0%, 100% { opacity: 0.7; }
+          50% { opacity: 1; }
         }
         
-        .animate-pulse-subtle {
-          animation: pulse-subtle 2s ease-in-out infinite;
+        @keyframes glow-pulse {
+          0%, 100% { box-shadow: 0 0 5px currentColor; }
+          50% { box-shadow: 0 0 20px currentColor; }
+        }
+        
+        .animate-pulse-soft {
+          animation: pulse-soft 2s ease-in-out infinite;
+        }
+        
+        .animate-glow-pulse {
+          animation: glow-pulse 1.5s ease-in-out infinite;
         }
       `}</style>
     </div>
@@ -458,14 +525,19 @@ const VolumeColumn = ({
 // Propriedades padrão
 VolumeColumn.defaultProps = {
   index: 0,
-  volume: 0.5,
+  volume: 0.8,
   isActive: true,
   isCurrent: false,
   isAccent: false,
   isGhost: false,
-  showLabel: true,
-  columnHeight: 120,
+  isTriplet: false,
+  tripletPosition: 0,
   theme: 'default',
+  columnHeight: 160,
+  showLabel: true,
+  showControls: true,
+  interactive: true,
+  className: '',
 };
 
 export default React.memo(VolumeColumn);
