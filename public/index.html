@@ -1,180 +1,188 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-theme="default">
-<head>
+<html lang="pt-BR">
+  <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#0f172a">
-    <meta name="description" content="Rhythm Trainer - Metrônomo inteligente para treino rítmico avançado">
-    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="description" content="RhythmSecret - Advanced Rhythm Training Metronome" />
     
-    <!-- SEO -->
-    <title>Rhythm Trainer PRO | Metrônomo Inteligente</title>
-    <meta name="title" content="Rhythm Trainer PRO | Metrônomo Inteligente">
-    <meta name="keywords" content="metrônomo, ritmo, treino musical, música, bateria, percussionista, tempo">
-    <meta name="author" content="Rhythm Trainer">
-    <meta property="og:title" content="Rhythm Trainer PRO">
-    <meta property="og:description" content="Metrônomo inteligente para treino rítmico avançado">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://rhythm-trainer.com">
-    <meta property="og:image" content="/logo512.png">
+    <!-- iOS Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="RhythmSecret" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     
-    <!-- Favicon -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <link rel="apple-touch-icon" href="/logo192.png">
+    <!-- Android Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="RhythmSecret" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://rhythmsecret.vercel.app/" />
+    <meta property="og:title" content="RhythmSecret - Advanced Rhythm Training" />
+    <meta property="og:description" content="Professional metronome and rhythm trainer for musicians" />
+    <meta property="og:image" content="/og-image.png" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://rhythmsecret.vercel.app/" />
+    <meta property="twitter:title" content="RhythmSecret - Advanced Rhythm Training" />
+    <meta property="twitter:description" content="Professional metronome and rhythm trainer for musicians" />
+    <meta property="twitter:image" content="/twitter-image.png" />
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     
-    <!-- PWA Registration -->
-    <script src="/register-sw.js" defer></script>
+    <title>RhythmSecret - Advanced Rhythm Training</title>
     
-    <!-- Theme Script -->
-    <script>
-        // Apply saved theme on load
-        (function() {
-            const savedTheme = localStorage.getItem('rhythm-trainer-theme') || 'default';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-            
-            // PWA Install prompt
-            let deferredPrompt;
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                
-                // Show install button if not already installed
-                if (!window.matchMedia('(display-mode: standalone)').matches) {
-                    setTimeout(() => {
-                        const installBtn = document.getElementById('install-pwa-btn');
-                        if (installBtn) {
-                            installBtn.style.display = 'flex';
-                            installBtn.addEventListener('click', async () => {
-                                if (deferredPrompt) {
-                                    deferredPrompt.prompt();
-                                    const { outcome } = await deferredPrompt.userChoice;
-                                    console.log(`User response to the install prompt: ${outcome}`);
-                                    deferredPrompt = null;
-                                }
-                            });
-                        }
-                    }, 3000);
-                }
-            });
-            
-            // Detect standalone mode (PWA)
-            window.addEventListener('load', () => {
-                if (window.matchMedia('(display-mode: standalone)').matches) {
-                    document.body.classList.add('pwa-installed');
-                }
-            });
-        })();
-    </script>
-</head>
-<body class="bg-gray-950 text-white font-sans antialiased">
-    <div id="root" class="h-screen"></div>
+    <!-- Preload critical resources -->
+    <link rel="preload" href="/src/main.jsx" as="script" />
+    <link rel="preload" href="/src/index.css" as="style" />
     
-    <!-- Install PWA Button (hidden by default) -->
-    <button 
-        id="install-pwa-btn"
-        class="fixed bottom-6 right-6 z-50 hidden items-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl shadow-2xl hover:scale-105 transition-transform"
-        aria-label="Instalar App"
-    >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-        Instalar App
-    </button>
-    
-    <!-- Loading Screen -->
-    <div id="loading-screen" class="fixed inset-0 bg-gradient-to-br from-gray-900 to-gray-950 z-50 flex items-center justify-center">
-        <div class="text-center">
-            <div class="relative">
-                <!-- Animated logo -->
-                <div class="w-24 h-24 mx-auto mb-8">
-                    <div class="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 animate-pulse"></div>
-                    <div class="absolute inset-2 rounded-xl bg-gray-900 flex items-center justify-center">
-                        <svg class="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                        </svg>
-                    </div>
-                </div>
-                
-                <!-- Loading text -->
-                <h1 class="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                    Rhythm Trainer
-                </h1>
-                <p class="text-gray-400 mb-6">Carregando experiência musical...</p>
-                
-                <!-- Loading spinner -->
-                <div class="inline-block relative">
-                    <div class="w-16 h-16 border-4 border-gray-800 rounded-full"></div>
-                    <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-                </div>
-                
-                <!-- Loading progress -->
-                <div class="mt-8 w-64 mx-auto">
-                    <div class="h-1 bg-gray-800 rounded-full overflow-hidden">
-                        <div id="loading-progress" class="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                    <p id="loading-status" class="text-xs text-gray-500 mt-2">Inicializando sistema de áudio...</p>
-                </div>
-            </div>
-        </div>
+    <style>
+      /* Critical CSS - Load before React */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        background: #0f172a;
+        color: #ffffff;
+        overflow: hidden;
+        height: 100vh;
+      }
+      
+      #root {
+        height: 100%;
+        width: 100%;
+      }
+      
+      /* Loading screen */
+      .loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: #0f172a;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      }
+      
+      .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid rgba(59, 130, 246, 0.3);
+        border-radius: 50%;
+        border-top-color: #3b82f6;
+        animation: spin 1s ease-in-out infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        margin-top: 20px;
+        color: #94a3b8;
+        font-weight: 500;
+      }
+      
+      /* No JavaScript fallback */
+      .no-js {
+        display: none;
+        text-align: center;
+        padding: 40px;
+        color: #ffffff;
+      }
+      
+      .no-js h1 {
+        color: #ef4444;
+        margin-bottom: 20px;
+      }
+      
+      noscript .no-js {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Loading screen - hidden by React -->
+    <div id="loading" class="loading-screen">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading RhythmSecret...</div>
     </div>
     
-    <!-- Loading Script -->
+    <!-- No JavaScript fallback -->
+    <noscript>
+      <div class="no-js">
+        <h1>JavaScript Required</h1>
+        <p>RhythmSecret requires JavaScript to function properly.</p>
+        <p>Please enable JavaScript in your browser settings.</p>
+      </div>
+    </noscript>
+    
+    <!-- React root -->
+    <div id="root"></div>
+    
+    <!-- Script to hide loading screen when React loads -->
     <script>
-        // Simulate loading progress
-        const loadingProgress = document.getElementById('loading-progress');
-        const loadingStatus = document.getElementById('loading-status');
-        const loadingScreen = document.getElementById('loading-screen');
-        
-        const loadingSteps = [
-            { progress: 10, text: 'Inicializando sistema de áudio...' },
-            { progress: 25, text: 'Carregando interface...' },
-            { progress: 40, text: 'Configurando tema...' },
-            { progress: 60, text: 'Conectando com Firebase...' },
-            { progress: 80, text: 'Preparando metrônomo...' },
-            { progress: 95, text: 'Quase pronto...' },
-            { progress: 100, text: 'Concluído!' }
-        ];
-        
-        let currentStep = 0;
-        
-        function updateLoading() {
-            if (currentStep < loadingSteps.length) {
-                const step = loadingSteps[currentStep];
-                loadingProgress.style.width = step.progress + '%';
-                loadingStatus.textContent = step.text;
-                currentStep++;
-                
-                const delay = currentStep === loadingSteps.length - 1 ? 800 : 300;
-                setTimeout(updateLoading, delay);
-            } else {
-                // Hide loading screen when React is ready
-                setTimeout(() => {
-                    loadingScreen.style.opacity = '0';
-                    setTimeout(() => {
-                        loadingScreen.style.display = 'none';
-                    }, 500);
-                }, 500);
-            }
+      // Hide loading screen when React mounts
+      window.addEventListener('DOMContentLoaded', () => {
+        const loading = document.getElementById('loading');
+        if (loading) {
+          // Wait a bit to ensure React is ready
+          setTimeout(() => {
+            loading.style.opacity = '0';
+            loading.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => {
+              loading.style.display = 'none';
+            }, 300);
+          }, 500);
         }
         
-        // Start loading animation
-        setTimeout(updateLoading, 300);
-        
-        // Check if Web Audio API is supported
-        if (!window.AudioContext && !window.webkitAudioContext) {
-            loadingStatus.textContent = 'Aviso: API de Áudio não suportada. Algumas funcionalidades podem não estar disponíveis.';
-            loadingStatus.className = 'text-xs text-amber-500 mt-2';
+        // Check for service worker support
+        if ('serviceWorker' in navigator) {
+          // Service worker will be registered by main.jsx
+          console.log('Service Worker supported');
         }
+        
+        // Theme detection
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) {
+          document.documentElement.classList.add('dark');
+        }
+      });
+      
+      // Handle offline/online status
+      window.addEventListener('online', () => {
+        document.documentElement.classList.remove('offline');
+        document.documentElement.classList.add('online');
+      });
+      
+      window.addEventListener('offline', () => {
+        document.documentElement.classList.remove('online');
+        document.documentElement.classList.add('offline');
+      });
     </script>
     
-    <!-- TypeKit or other font scripts can go here -->
-    <script type="module" src="/src/index.jsx"></script>
-</body>
+    <!-- Entry point -->
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
