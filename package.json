@@ -1,62 +1,38 @@
-{
-  "name": "rhythm-secret",
-  "version": "1.0.0",
-  "type": "module",
-  "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "predeploy": "npm run build",
-    "serve": "vite preview --port 4173"
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  base: './',
+  plugins: [react()], // Remove a configuração personalizada do Babel
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@components': path.resolve(__dirname, './src/components'),
+      '@hooks': path.resolve(__dirname, './src/hooks'),
+      '@utils': path.resolve(__dirname, './src/utils')
+    },
+    extensions: ['.js', '.jsx', '.json']
   },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "lucide-react": "^0.309.0",
-    "firebase": "^10.8.0"
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'terser',
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html')
+      }
+    }
   },
-  "devDependencies": {
-    "@types/react": "^18.2.48",
-    "@types/react-dom": "^18.2.18",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.6",
-    "vite": "^5.0.11"
+  server: {
+    port: 3000,
+    host: true,
+    open: true
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  css: {
+    postcss: './postcss.config.js'
   },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
-  },
-  "keywords": [
-    "metronome",
-    "rhythm",
-    "music",
-    "trainer",
-    "practice",
-    "PWA"
-  ],
-  "author": "RhythmSecret Team",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/fecardozuru/RhythmSecret.git"
-  },
-  "bugs": {
-    "url": "https://github.com/fecardozuru/RhythmSecret/issues"
-  },
-  "homepage": "https://rhythmsecret.vercel.app"
-}
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'lucide-react']
+  }
+});
