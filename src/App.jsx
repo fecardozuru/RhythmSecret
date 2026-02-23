@@ -624,8 +624,4 @@ export default function App() {
       } else if (key === 'z') {
         if (!isUiLocked && appMode === 'PRO') { setIsPermutationEnabled(prev => !prev); showToast(`🔄 Permutação alternada`); }
       } else if (key === 'x') {
-        if (!isUiLocked && appMode === 'PRO') { setIsGapEnabled(prev => !prev); showToast(`⏳ Gap Ciclo alternado`); }
-      } else if (key === 'c') {
-        if (!isUiLocked && appMode === 'PRO') { setIsGhostModeEnabled(prev => !prev); showToast(`👻 Ghost Mode alternado`); }
-      } else if (key === 'v') {
-        if (!isUiLocked && appMode === 'PRO') { setIsBpmProgressEnabled(prev => !prev); showToast(`
+        if (!isUiLocked && appMode
