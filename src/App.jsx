@@ -31,7 +31,7 @@ try {
   console.error('Erro ao inicializar Firebase:', error);
 }
 
-const appId = import.meta.env.VITE_FIREBASE_APP_ID || 'default-app-id';
+const appId = import.meta.env.VITE_APP_ID || 'rhythm-secret';
 
 // --- CONSTANTES DE ENGINE ---
 const LATENCY_COMPENSATION = 0.025; 
