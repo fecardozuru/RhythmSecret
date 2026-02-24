@@ -45,7 +45,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',           // Pasta de saída
     sourcemap: false,         // Desativa sourcemaps em produção
-    minify: 'terser',         // Minificação com Terser
+    minify: 'esbuild',         // Minificação com Terser
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html')
