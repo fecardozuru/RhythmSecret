@@ -4,10 +4,6 @@
 
 /* Base Styles */
 @layer base {
-  * {
-    @apply border-border;
-  }
-  
   html {
     @apply scroll-smooth;
   }
