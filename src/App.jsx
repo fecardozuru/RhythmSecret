@@ -698,7 +698,7 @@ export default function App() {
     );
   };
   // Tela de login - exibida quando usuario nao esta autenticado
-  if (!user) {
+    if (!user || user.isAnonymous) {
     return (
       <div className="min-h-[100dvh] w-full flex flex-col items-center justify-center bg-black text-white">
         <div className="flex flex-col items-center gap-6 p-8 rounded-2xl bg-white/5 border border-white/10 max-w-sm w-full mx-4">
