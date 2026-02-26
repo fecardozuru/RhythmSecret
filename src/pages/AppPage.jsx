@@ -6,7 +6,7 @@ import { VolumeColumn } from '../components/ui';
 import { ModeSelector } from '../components/ui';
 import { GapToggle, GhostModeToggle, PermutationToggle, PresetManager } from '../components/pro-features';
 import { AIAssistant } from '../components/ai';
-import Layout from '../components/Layout';
+import { Layout } from '../components/ui';
 
 /**
  * AppPage - Página principal da aplicação após login.
@@ -33,5 +33,6 @@ import Layout from '../components/Layout';
                                                                                                    </Layout>
                                                                                                      );
                                                                                                      }
+
 
                                                                                                      export default AppPage;
