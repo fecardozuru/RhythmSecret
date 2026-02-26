@@ -1,15 +1,20 @@
 // /src/components/ui/Layout.jsx
 
 import React from 'react';
-import { useTheme } from '../../constants/themes';
-import OfflineIndicator from '../../../components/pwa/OfflineIndicator';
+import { useTheme } from '../../contexts';
+import OfflineIndicator from '../pwa/OfflineIndicator';
 
 /**
  * Layout principal do Rhythm Trainer
  * Organiza todos os componentes na tela com responsividade
  */
 const Layout = ({ children }) => {
-  const { currentTheme, themeClasses } = useTheme();
+  const { themeClasses } = useTheme();
+  const childArray = React.Children.toArray(children);
+  const slottedChildren = childArray.filter((child) => child?.props?.slot);
+  const hasSlots = slottedChildren.length > 0;
+
+  const findSlot = (slotName) => slottedChildren.find((child) => child.props?.slot === slotName);
 
   return (
     <div className={`min-h-screen ${themeClasses.background} transition-colors duration-500`}>
@@ -86,9 +91,7 @@ const Layout = ({ children }) => {
               </h2>
               <div className="space-y-6">
                 {/* Componentes serão injetados aqui */}
-                {React.Children.toArray(children).find(child => 
-                  child.props?.slot === 'bpm-controls'
-                )}
+                {hasSlots ? findSlot('bpm-controls') : childArray[0]}
               </div>
             </section>
 
@@ -110,9 +113,7 @@ const Layout = ({ children }) => {
               </h2>
               <div className="space-y-6">
                 {/* Componentes serão injetados aqui */}
-                {React.Children.toArray(children).find(child => 
-                  child.props?.slot === 'rhythm-controls'
-                )}
+                {hasSlots ? findSlot('rhythm-controls') : childArray[1]}
               </div>
             </section>
 
@@ -134,9 +135,7 @@ const Layout = ({ children }) => {
               </h2>
               <div className="space-y-6">
                 {/* Componentes serão injetados aqui */}
-                {React.Children.toArray(children).find(child => 
-                  child.props?.slot === 'theme-controls'
-                )}
+                {hasSlots ? findSlot('theme-controls') : childArray[2]}
               </div>
             </section>
           </div>
@@ -165,16 +164,12 @@ const Layout = ({ children }) => {
                 
                 {/* Controles da grade */}
                 <div className="flex items-center gap-3">
-                  {React.Children.toArray(children).find(child => 
-                    child.props?.slot === 'grid-controls'
-                  )}
+                  {hasSlots ? findSlot('grid-controls') : null}
                 </div>
               </div>
               
               {/* Grade será injetada aqui */}
-              {React.Children.toArray(children).find(child => 
-                child.props?.slot === 'volume-grid'
-              )}
+              {hasSlots ? findSlot('volume-grid') : childArray.slice(3)}
             </div>
           </div>
 
@@ -201,9 +196,7 @@ const Layout = ({ children }) => {
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 {/* Componentes PRO serão injetados aqui */}
-                {React.Children.toArray(children).find(child => 
-                  child.props?.slot === 'pro-features'
-                )}
+                {hasSlots ? findSlot('pro-features') : null}
               </div>
             </section>
 
@@ -225,9 +218,7 @@ const Layout = ({ children }) => {
               </h2>
               <div className="space-y-6">
                 {/* Componentes serão injetados aqui */}
-                {React.Children.toArray(children).find(child => 
-                  child.props?.slot === 'loop-presets'
-                )}
+                {hasSlots ? findSlot('loop-presets') : null}
               </div>
             </section>
           </div>

@@ -1,6 +1,5 @@
-// Configurações musicais fundamentais - Rítmo, Subdivisões, Compassos
+// Configurações musicais fundamentais - Ritmo, Subdivisões, Compassos
 
-// Subdivisões rítmicas disponíveis (1-9)
 export const SUBDIVISIONS = [
   { value: 1, label: 'Semínima (Quarter)' },
   { value: 2, label: 'Colcheias (Eighths)' },
@@ -13,21 +12,28 @@ export const SUBDIVISIONS = [
   { value: 9, label: 'Nonina (Nonuplet)' },
 ];
 
-// Compassos disponíveis
-export const TIME_SIGNATURES = [
-  { num: 4, den: 4, name: '4/4 Comum' },
-  { num: 3, den: 4, name: '3/4 Valsa' },
-  { num: 2, den: 4, name: '2/4 Marcha' },
-  { num: 6, den: 8, name: '6/8 Composto' },
-  { num: 2, den: 2, name: '2/2 Alla Breve' },
-  { num: 3, den: 8, name: '3/8 Scherzo' },
-  { num: 9, den: 8, name: '9/8 Composto' },
-  { num: 12, den: 8, name: '12/8 Blues' },
-  { num: 5, den: 4, name: '5/4 Dave' },
-  { num: 7, den: 8, name: '7/8 Money' },
+export const SUBDIVISION_OPTIONS = SUBDIVISIONS;
+
+const signatures = [
+  { num: 4, den: 4, numerator: 4, denominator: 4, name: '4/4 Comum' },
+  { num: 3, den: 4, numerator: 3, denominator: 4, name: '3/4 Valsa' },
+  { num: 2, den: 4, numerator: 2, denominator: 4, name: '2/4 Marcha' },
+  { num: 6, den: 8, numerator: 6, denominator: 8, name: '6/8 Composto' },
+  { num: 2, den: 2, numerator: 2, denominator: 2, name: '2/2 Alla Breve' },
+  { num: 3, den: 8, numerator: 3, denominator: 8, name: '3/8 Scherzo' },
+  { num: 9, den: 8, numerator: 9, denominator: 8, name: '9/8 Composto' },
+  { num: 12, den: 8, numerator: 12, denominator: 8, name: '12/8 Blues' },
+  { num: 5, den: 4, numerator: 5, denominator: 4, name: '5/4 Dave' },
+  { num: 7, den: 8, numerator: 7, denominator: 8, name: '7/8 Money' },
 ];
 
-// Marcas de tempo tradicionais
+export const TIME_SIGNATURES = signatures;
+for (const sig of signatures) {
+  TIME_SIGNATURES[`${sig.num}/${sig.den}`] = sig;
+}
+
+export const COMMON_TIME_SIGNATURES = ['4/4', '3/4', '2/4', '6/8'];
+
 export const TEMPO_MARKINGS = [
   { limit: 40, label: 'Grave' },
   { limit: 60, label: 'Largo' },
@@ -41,73 +47,53 @@ export const TEMPO_MARKINGS = [
   { limit: 999, label: 'Prestissimo' },
 ];
 
-// Modos de operação do aplicativo
 export const APP_MODES = {
   BEGINNER: { id: 'BEGINNER', label: 'Iniciante', icon: 'GraduationCap' },
   ADVANCED: { id: 'ADVANCED', label: 'Avançado', icon: 'Settings' },
-  PRO: { id: 'PRO', label: 'PRO Maestro', icon: 'Crown' }
+  PRO: { id: 'PRO', label: 'PRO Maestro', icon: 'Crown' },
 };
 
-// Passos de ajuste de BPM disponíveis
 export const BPM_STEPS = [1, 5, 10, 15, 20, 25, 30];
-
-// Opções de loop (compassos por ciclo)
 export const LOOP_BAR_OPTIONS = [1, 2, 4, 8];
-
-// Valores de volume para notas (0=mudo, 3=máximo)
 export const VOLUME_VALUES = { 0: 0, 1: 0.3, 2: 0.6, 3: 1.0 };
 
-// Configurações de latência e timing
-export const LATENCY_COMPENSATION = 0.025; // 25ms compensação
-export const LOOKAHEAD_TIME = 0.1; // 100ms lookahead
+export const LATENCY_COMPENSATION = 0.025;
+export const LOOKAHEAD_TIME = 0.1;
 
-// Range de BPM permitido
 export const BPM_RANGE = {
   MIN: 30,
   MAX: 300,
-  DEFAULT: 60
+  DEFAULT: 60,
 };
 
-// Função auxiliar: obtém marca de tempo baseada no BPM
-export const getTempoMarking = (bpm) => {
-  return TEMPO_MARKINGS.find(t => bpm <= t.limit)?.label || 'Prestissimo';
-};
+export const getTempoMarking = (bpm) => TEMPO_MARKINGS.find((t) => bpm <= t.limit)?.label || 'Prestissimo';
 
-// Função auxiliar: cria padrão de groove inicial
 export const createGroovePattern = (count) => {
   const arr = new Array(count).fill(1);
-  arr[0] = 3; // Primeira nota mais forte
+  arr[0] = 3;
   return arr;
 };
 
-// Função auxiliar: determina peso/altura do acento baseado no compasso
 export const getAccentWeight = (beatIndex, timeSig) => {
-  const { num, den } = timeSig;
-  
-  // Primeiro tempo sempre mais forte
-  if (beatIndex === 0) return 1760; 
-  
-  // Compassos compostos (6/8, 9/8, 12/8) - acento a cada 3
-  if (den === 8 && num % 3 === 0) {
-    if (beatIndex % 3 === 0) return 1320; 
+  const num = timeSig?.num ?? timeSig?.numerator ?? 4;
+  const den = timeSig?.den ?? timeSig?.denominator ?? 4;
+
+  if (beatIndex === 0) return 1760;
+
+  if (den === 8 && num % 3 === 0 && beatIndex % 3 === 0) {
+    return 1320;
   }
-  
-  // Alla breve (2/2) - acento mais suave
-  if (num === 2 && den === 2) return 880; 
-  
-  // 4/4 - terceiro tempo (backbeat) ligeiramente mais forte
+
+  if (num === 2 && den === 2) return 880;
   if (num === 4 && den === 4 && beatIndex === 2) return 1100;
-  
-  // Demais tempos - volume padrão
-  return 880; 
+
+  return 880;
 };
 
-// Configurações de reprodução
 export const PLAY_MODES = {
   MANUAL: 'MANUAL',
-  AUTO_UP: 'AUTO_UP', 
-  AUTO_DOWN: 'AUTO_DOWN'
+  AUTO_UP: 'AUTO_UP',
+  AUTO_DOWN: 'AUTO_DOWN',
 };
 
-// Número de slots de presets
 export const PRESET_SLOTS = [1, 2, 3];
