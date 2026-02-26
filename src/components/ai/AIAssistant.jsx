@@ -16,7 +16,7 @@ import {
   Minimize2
 } from 'lucide-react';
 import { geminiService } from '../../services/gemini';
-import { useTheme } from '../../constants/themes';
+import { useTheme } from '../../contexts';
 
 const AIAssistant = ({ 
   currentPattern = null,

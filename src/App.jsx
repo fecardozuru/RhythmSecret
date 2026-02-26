@@ -1,18 +1,37 @@
 import React from 'react';
-import { AppProvider } from './contexts/AppContext';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { AppPage } from './pages';
+import { AppProvider, ThemeProvider, UserProvider, useUser } from './contexts';
+import { AppPage, LoginPage } from './pages';
 
-// Login com Google desativado temporariamente.
-// Renderiza AppPage diretamente sem autenticacao.
-function App() {
+const AuthGate = () => {
+  const { user, loading } = useUser();
+
+  if (loading) {
     return (
-        <ThemeProvider>
-            <AppProvider>
-                <AppPage />
-            </AppProvider>
-        </ThemeProvider>
-    )
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        Validando autenticação...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  return (
+    <AppProvider>
+      <AppPage />
+    </AppProvider>
+  );
+};
+
+function App() {
+  return (
+    <ThemeProvider>
+      <UserProvider>
+        <AuthGate />
+      </UserProvider>
+    </ThemeProvider>
+  );
 }
 
 export default App;

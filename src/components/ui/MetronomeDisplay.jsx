@@ -11,7 +11,7 @@ import {
   SkipForward,
   SkipBack
 } from 'lucide-react';
-import { useTheme } from '../../constants/themes';
+import { useTheme } from '../../contexts';
 
 /**
  * Display visual do metrônomo com contador de compassos e feedback em tempo real
