@@ -1,8 +1,8 @@
 // /src/components/ui/Layout.jsx
 
 import React from 'react';
-import { useTheme } from '../../constants/themes';
-import OfflineIndicator from '../../../components/pwa/OfflineIndicator';
+import { useTheme } from '../../contexts';
+import OfflineIndicator from '../pwa/OfflineIndicator';
 
 /**
  * Layout principal do Rhythm Trainer
