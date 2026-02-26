@@ -19,7 +19,7 @@ export default defineConfig({
   plugins: [
     react({
       // Otimizações para React
-      include: '**/*.{jsx,tsx}',
+      include: '**/*.{js,jsx,ts,tsx}',
       babel: {
         plugins: [
           ['@babel/plugin-transform-react-jsx', { runtime: 'automatic' }]
