@@ -12,7 +12,7 @@ import { THEMES } from '../constants/themes';
       const ThemeContext = createContext(null);
 
       const STORAGE_KEY = 'rhythmsecret-theme';
-      const DEFAULT_THEME = 'dark';
+      const DEFAULT_THEME = 'INSTAGRAM';
 
       export function ThemeProvider({ children }) {
         const [themeName, setThemeName] = useState(() => {
@@ -25,9 +25,24 @@ import { THEMES } from '../constants/themes';
                           localStorage.setItem(STORAGE_KEY, themeName);
                             }, [themeName]);
 
-                              const currentTheme = THEMES?.[themeName] ?? {};
+                              const currentTheme = THEMES?.[themeName] ?? THEMES[DEFAULT_THEME];
 
-                                const value = { themeName, setThemeName, currentTheme, themes: THEMES };
+                              const themeClasses = {
+                                background: currentTheme?.colors?.bg ?? 'bg-black',
+                                text: currentTheme?.colors?.text ?? 'text-white',
+                                primary: currentTheme?.colors?.barFilled ?? 'bg-pink-500',
+                                accent: currentTheme?.colors?.accent ?? 'text-pink-400',
+                                highlight: currentTheme?.colors?.barActive ?? 'bg-pink-500',
+                                secondary: currentTheme?.colors?.container ?? 'bg-white/10',
+                                surface: currentTheme?.colors?.container ?? 'bg-white/5',
+                                border: 'border border-white/10',
+                                header: 'bg-black/20 border-white/10',
+                                footer: 'bg-black/20 border-white/10',
+                                glow: 'shadow-[0_0_20px_rgba(255,255,255,0.15)]',
+                                pro: 'bg-amber-500'
+                              };
+
+                                const value = { themeName, setThemeName, currentTheme, themeClasses, themes: THEMES };
 
                                   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
                                   }

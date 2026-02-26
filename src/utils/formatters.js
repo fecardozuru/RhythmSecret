@@ -391,6 +391,18 @@ export function formatThemeGradient(themeName, direction = 'to right') {
   return gradients[themeName] || gradients.default;
 }
 
+
+export function formatTime(date = new Date()) {
+  if (!(date instanceof Date)) return '--:--';
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+export function formatBatteryLevel(level) {
+  if (level === null || level === undefined || Number.isNaN(level)) return '--%';
+  const safe = Math.max(0, Math.min(100, Math.round(level)));
+  return `${safe}%`;
+}
+
 export default {
   formatNumber,
   formatBpm,
@@ -407,4 +419,6 @@ export default {
   formatBytes,
   formatRelativeTime,
   formatThemeGradient,
+  formatTime,
+  formatBatteryLevel,
 };

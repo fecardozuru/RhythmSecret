@@ -4,12 +4,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { 
   BarChart3, 
   Waves, 
-  Pulse, 
   Activity,
   TrendingUp,
   Zap
 } from 'lucide-react';
-import { useTheme } from '../../constants/themes';
+import { useTheme } from '../../contexts';
 
 /**
  * Visualizador de onda/ritmo em tempo real
@@ -329,7 +328,7 @@ const Visualizer = ({
             ${isAnimating ? 'animate-pulse' : ''}
             transition-all duration-300
           `}>
-            <Pulse className="w-5 h-5" />
+            <Waves className="w-5 h-5" />
           </div>
           
           <div>
@@ -373,7 +372,7 @@ const Visualizer = ({
               backdrop-blur-md
               text-center
             `}>
-              <Pulse className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <Waves className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm opacity-75">
                 Clique em PLAY para ativar o visualizador
               </p>
