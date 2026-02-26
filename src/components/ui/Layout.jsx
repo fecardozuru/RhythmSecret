@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useTheme } from '../../constants/themes';
-import OfflineIndicator from '../pwa/OfflineIndicator';
+import OfflineIndicator from '../../../components/pwa/OfflineIndicator';
 
 /**
  * Layout principal do Rhythm Trainer
