@@ -8,31 +8,33 @@ import { GapToggle, GhostModeToggle, PermutationToggle, PresetManager } from '..
 import { AIAssistant } from '../components/ai';
 import { Layout } from '../components/ui';
 
-/**
- * AppPage - Página principal da aplicação após login.
-  * Agrupa todos os componentes de controle e visualização.
-   * Estado global (BPM, volumes, playMode, etc.) vem de AppContext via hooks.
-    * Lógica de áudio fica em useMetronomeEngine (chamado em App.jsx).
-     */
-     function AppPage() {
-       return (
-           <Layout>
-                 <MetronomeDisplay />
-                       <BpmDial />
-                             <SubdivisionGrid />
-                                   <VolumeColumn />
-                                         <ModeSelector />
-                                               {/* Pro Features */}
-                                                     <div className="flex flex-wrap gap-2 justify-center">
-                                                             <GapToggle />
-                                                                     <GhostModeToggle />
-                                                                             <PermutationToggle />
-                                                                                   </div>
-                                                                                         <PresetManager />
-                                                                                               <AIAssistant />
-                                                                                                   </Layout>
-                                                                                                     );
-                                                                                                     }
+function AppPage() {
+  return (
+    <Layout>
+      <div slot="bpm-controls">
+        <MetronomeDisplay />
+        <BpmDial />
+        <ModeSelector />
+      </div>
+      <div slot="rhythm-controls">
+        <SubdivisionGrid />
+      </div>
+      <div slot="theme-controls">
+        <AIAssistant />
+      </div>
+      <div slot="volume-grid">
+        <VolumeColumn />
+      </div>
+      <div slot="pro-features">
+        <GapToggle />
+        <GhostModeToggle />
+        <PermutationToggle />
+      </div>
+      <div slot="loop-presets">
+        <PresetManager />
+      </div>
+    </Layout>
+  );
+}
 
-
-                                                                                                     export default AppPage;
+export default AppPage;
