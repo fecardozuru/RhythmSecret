@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { onAuthStateChanged } from '../services/firebase';
+import { onAuthStateChanged, getRedirectResult } from '../services/firebase';
 
 const UserContext = createContext(null);
 
@@ -8,12 +8,19 @@ export function UserProvider({ children, authorizedEmails = [] }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged((firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
-    });
+    let unsubscribe = () => {};
 
-    return unsubscribe;
+    // Verifica resultado de redirect pendente antes de iniciar o listener
+    getRedirectResult()
+      .catch(() => null)
+      .finally(() => {
+        unsubscribe = onAuthStateChanged((firebaseUser) => {
+          setUser(firebaseUser);
+          setLoading(false);
+        });
+      });
+
+    return () => unsubscribe();
   }, []);
 
   const isAuthorized = useMemo(() => {
