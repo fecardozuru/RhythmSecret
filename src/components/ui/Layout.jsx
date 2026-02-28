@@ -1,7 +1,7 @@
 // /src/components/ui/Layout.jsx
 
 import React from 'react';
-import { useTheme } from '../../constants/themes';
+import { useTheme } from '../../contexts';
 import OfflineIndicator from '../pwa/OfflineIndicator';
 
 /**

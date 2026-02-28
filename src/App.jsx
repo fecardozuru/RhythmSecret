@@ -553,7 +553,7 @@ export default function App() {
         </div>
       </div>
     );
-  };
+  }
 
   const renderSubdivisionGrid = () => {
     let volsToShow;
@@ -968,3 +968,5 @@ export default function App() {
     </div>
   );
 }
+
+export default App;

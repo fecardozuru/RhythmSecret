@@ -15,7 +15,7 @@ import {
   CheckCircle,
   Loader2
 } from 'lucide-react';
-import { useTheme } from '../../constants/themes';
+import { useTheme } from '../../contexts';
 import { formatTime, formatBatteryLevel } from '../../utils/formatters';
 
 /**
