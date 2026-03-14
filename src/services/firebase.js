@@ -2,13 +2,14 @@ import { initializeApp, getApps } from 'firebase/app';
 import {
   getAuth,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult as firebaseGetRedirectResult,
   signOut as firebaseSignOut,
   onAuthStateChanged as firebaseAuthStateChanged
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -63,6 +64,32 @@ export const getRedirectResult = async () => {
     await saveUserData(result.user);
   }
   return result;
+};
+
+export const signInWithYahoo = async () => {
+  const provider = new OAuthProvider('yahoo.com');
+  try {
+    const result = await signInWithPopup(auth, provider);
+    await saveUserData(result.user);
+    return result;
+  } catch (error) {
+    if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+      return signInWithRedirect(auth, provider);
+    }
+    throw error;
+  }
+};
+
+export const signInWithYahooRedirect = () => signInWithRedirect(auth, new OAuthProvider('yahoo.com'));
+
+export const saveContactLead = async (contact) => {
+  const leadsRef = collection(db, 'leads');
+  await addDoc(leadsRef, {
+    contact: contact.trim(),
+    source: 'soft_prompt',
+    timestamp: serverTimestamp(),
+    userAgent: navigator.userAgent,
+  });
 };
 
 export const signOut = async () => {

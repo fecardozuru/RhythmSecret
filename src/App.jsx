@@ -7,8 +7,8 @@ import {
   Zap, ArrowRight, Keyboard, X
 } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc, onSnapshot, collection } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect as signInWithRedirectFB, OAuthProvider } from 'firebase/auth';
+import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 // --- CONSTANTES ---
 import { THEMES, APP_MODES } from './constants/themes';
@@ -80,6 +80,13 @@ export default function App() {
   const [isSaveMenuOpen,        setIsSaveMenuOpen]        = useState(false);
   const [showShortcutsModal,    setShowShortcutsModal]    = useState(false);
 
+  // Soft Login Modal
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginContact,   setLoginContact]   = useState('');
+  const [loginLoading,   setLoginLoading]   = useState(false);
+  const [loginError,     setLoginError]     = useState('');
+  const [loginSuccess,   setLoginSuccess]   = useState(false);
+
   // --- REFS PARA OTIMIZAÇÃO (sem re-renders no áudio) ---
   const pendingUpdateRef     = useRef(false);
   const audioContextRef      = useRef(null);
@@ -109,7 +116,8 @@ export default function App() {
   const modeSelectorRef = useRef(null);
   const timeSigRef      = useRef(null);
   const bpmStepRef      = useRef(null);
-  const saveMenuRef     = useRef(null);
+  const saveMenuRef         = useRef(null);
+  const loginPromptShownRef = useRef(false);
 
   const AppModeIcon   = APP_MODES[appMode].icon;
   const isUiLocked    = isPlaying && (appMode === 'ADVANCED' || appMode === 'PRO');
@@ -176,6 +184,15 @@ export default function App() {
     initAuth();
     const unsubscribe = onAuthStateChanged(auth, setUser);
     return () => unsubscribe();
+  }, []);
+
+  // --- SOFT LOGIN PROMPT (exibe 1x, não bloqueia o app) ---
+  useEffect(() => {
+    if (loginPromptShownRef.current) return; // evita duplo disparo no StrictMode
+    loginPromptShownRef.current = true;
+    if (localStorage.getItem('rs_login_dismissed')) return;
+    const t = setTimeout(() => setShowLoginModal(true), 4000);
+    return () => clearTimeout(t);
   }, []);
 
   // --- FIREBASE: PRESETS EM TEMPO REAL ---
@@ -576,6 +593,77 @@ export default function App() {
     );
   };
 
+  // --- SOFT LOGIN HANDLERS ---
+  const dismissLoginModal = useCallback(() => {
+    localStorage.setItem('rs_login_dismissed', '1');
+    setShowLoginModal(false);
+    setLoginContact('');
+    setLoginError('');
+    setLoginSuccess(false);
+  }, []);
+
+  const handleGoogleLogin = useCallback(async () => {
+    setLoginLoading(true);
+    setLoginError('');
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(auth, provider);
+      dismissLoginModal();
+    } catch (err) {
+      if (err.code === 'auth/popup-blocked') {
+        localStorage.setItem('rs_login_dismissed', '1');
+        const provider2 = new GoogleAuthProvider();
+        provider2.setCustomParameters({ prompt: 'select_account' });
+        await signInWithRedirectFB(auth, provider2);
+      } else if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
+        setLoginError('Erro ao conectar. Tente novamente.');
+      }
+    } finally {
+      setLoginLoading(false);
+    }
+  }, [dismissLoginModal]);
+
+  const handleYahooLogin = useCallback(async () => {
+    setLoginLoading(true);
+    setLoginError('');
+    try {
+      const provider = new OAuthProvider('yahoo.com');
+      await signInWithPopup(auth, provider);
+      dismissLoginModal();
+    } catch (err) {
+      if (err.code === 'auth/popup-blocked') {
+        localStorage.setItem('rs_login_dismissed', '1');
+        const provider2 = new OAuthProvider('yahoo.com');
+        await signInWithRedirectFB(auth, provider2);
+      } else if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
+        setLoginError('Yahoo indisponível. Use Google ou email.');
+      }
+    } finally {
+      setLoginLoading(false);
+    }
+  }, [dismissLoginModal]);
+
+  const handleContactSubmit = useCallback(async () => {
+    const contact = loginContact.trim();
+    if (!contact) return;
+    setLoginLoading(true);
+    setLoginError('');
+    try {
+      await addDoc(collection(db, 'leads'), {
+        contact,
+        source: 'soft_prompt',
+        timestamp: serverTimestamp(),
+      });
+      setLoginSuccess(true);
+      setTimeout(dismissLoginModal, 1500);
+    } catch {
+      setLoginError('Erro ao salvar. Tente novamente.');
+    } finally {
+      setLoginLoading(false);
+    }
+  }, [loginContact, dismissLoginModal]);
+
   // --- RENDER PRINCIPAL ---
   return (
     <div className={`min-h-[100dvh] w-full overflow-y-auto overflow-x-hidden ${currentTheme.colors.bg} ${currentTheme.colors.text} font-sans flex flex-col items-center p-2 sm:p-4 lg:p-6 transition-colors duration-700 relative selection:bg-white/20`}>
@@ -923,6 +1011,81 @@ export default function App() {
       </div>
 
       {/* MODAL ATALHOS */}
+      {/* SOFT LOGIN MODAL */}
+      {showLoginModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={dismissLoginModal} aria-hidden="true" />
+          <div
+            className="relative bg-gray-950 border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={dismissLoginModal}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
+              aria-label="Fechar"
+            >
+              <X size={18} />
+            </button>
+            <div className="mb-6 text-center">
+              <div className="text-xl font-black text-white mb-2 tracking-tight">Fique por dentro</div>
+              <p className="text-sm text-gray-400 leading-relaxed">Receba dicas de prática e novidades do RhythmSecret</p>
+            </div>
+            <button
+              onClick={handleGoogleLogin}
+              disabled={loginLoading}
+              className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 font-semibold py-3 px-4 rounded-xl hover:bg-gray-100 transition-colors mb-3 disabled:opacity-50 text-sm"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                <path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/>
+                <path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.01c-.72.48-1.63.76-2.7.76-2.08 0-3.84-1.4-4.47-3.29H1.85v2.07A8 8 0 0 0 8.98 17z"/>
+                <path fill="#FBBC05" d="M4.51 10.52A4.8 4.8 0 0 1 4.26 9c0-.53.09-1.04.25-1.52V5.41H1.85A8 8 0 0 0 .98 9c0 1.29.31 2.51.87 3.59l2.66-2.07z"/>
+                <path fill="#EA4335" d="M8.98 3.58c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 .98 9l2.87 2.23C4.6 5 6.6 3.58 8.98 3.58z"/>
+              </svg>
+              {loginLoading ? 'Aguarde...' : 'Continuar com Google'}
+            </button>
+            <button
+              onClick={handleYahooLogin}
+              disabled={loginLoading}
+              className="w-full flex items-center justify-center gap-3 bg-[#6001D2] text-white font-semibold py-3 px-4 rounded-xl hover:bg-[#5000b5] transition-colors mb-4 disabled:opacity-50 text-sm"
+            >
+              <span className="font-black text-base leading-none">Y!</span>
+              {loginLoading ? 'Aguarde...' : 'Continuar com Yahoo'}
+            </button>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-white/10" />
+              <span className="text-xs text-gray-500">ou</span>
+              <div className="flex-1 h-px bg-white/10" />
+            </div>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={loginContact}
+                onChange={e => setLoginContact(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleContactSubmit(); }}
+                placeholder="Email ou telefone"
+                disabled={loginLoading}
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-white/30 transition-colors disabled:opacity-50"
+              />
+              <button
+                onClick={handleContactSubmit}
+                disabled={loginLoading || !loginContact.trim()}
+                className="bg-white/10 hover:bg-white/20 border border-white/10 text-white rounded-xl px-4 py-3 text-sm font-semibold transition-colors disabled:opacity-40"
+              >
+                OK
+              </button>
+            </div>
+            {loginError && <p className="text-red-400 text-xs mb-3 text-center">{loginError}</p>}
+            {loginSuccess && <p className="text-green-400 text-xs mb-3 text-center">Cadastrado! Até breve.</p>}
+            <button
+              onClick={dismissLoginModal}
+              className="w-full text-center text-xs text-gray-500 hover:text-gray-300 transition-colors py-2 mt-1"
+            >
+              Continuar sem cadastrar
+            </button>
+          </div>
+        </div>
+      )}
+
       {showShortcutsModal && (
         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowShortcutsModal(false)}>
           <div className="bg-[#0f0f0f] border border-white/10 rounded-[2.5rem] max-w-4xl w-full max-h-[85vh] overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col" onClick={e => e.stopPropagation()}>
