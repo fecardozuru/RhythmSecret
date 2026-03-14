@@ -648,19 +648,17 @@ export default function App() {
     const contact = loginContact.trim();
     if (!contact) return;
     setLoginLoading(true);
-    setLoginError('');
     try {
       await addDoc(collection(db, 'leads'), {
         contact,
         source: 'soft_prompt',
         timestamp: serverTimestamp(),
       });
-      setLoginSuccess(true);
-      setTimeout(dismissLoginModal, 1500);
     } catch {
-      setLoginError('Erro ao salvar. Tente novamente.');
+      // best-effort: salva o que puder, libera o app de qualquer forma
     } finally {
       setLoginLoading(false);
+      dismissLoginModal();
     }
   }, [loginContact, dismissLoginModal]);
 
@@ -1014,18 +1012,8 @@ export default function App() {
       {/* SOFT LOGIN MODAL */}
       {showLoginModal && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={dismissLoginModal} aria-hidden="true" />
-          <div
-            className="relative bg-gray-950 border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              onClick={dismissLoginModal}
-              className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"
-              aria-label="Fechar"
-            >
-              <X size={18} />
-            </button>
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" aria-hidden="true" />
+          <div className="relative bg-gray-950 border border-white/10 rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl">
             <div className="mb-6 text-center">
               <div className="text-xl font-black text-white mb-2 tracking-tight">Fique por dentro</div>
               <p className="text-sm text-gray-400 leading-relaxed">Receba dicas de prática e novidades do RhythmSecret</p>
@@ -1074,14 +1062,6 @@ export default function App() {
                 OK
               </button>
             </div>
-            {loginError && <p className="text-red-400 text-xs mb-3 text-center">{loginError}</p>}
-            {loginSuccess && <p className="text-green-400 text-xs mb-3 text-center">Cadastrado! Até breve.</p>}
-            <button
-              onClick={dismissLoginModal}
-              className="w-full text-center text-xs text-gray-500 hover:text-gray-300 transition-colors py-2 mt-1"
-            >
-              Continuar sem cadastrar
-            </button>
           </div>
         </div>
       )}
