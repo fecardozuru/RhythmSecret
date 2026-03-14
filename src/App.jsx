@@ -190,7 +190,7 @@ export default function App() {
   useEffect(() => {
     if (loginPromptShownRef.current) return; // evita duplo disparo no StrictMode
     loginPromptShownRef.current = true;
-    if (localStorage.getItem('rs_login_dismissed')) return;
+    if (localStorage.getItem('rs_login_dismissed_v2')) return;
     const t = setTimeout(() => setShowLoginModal(true), 4000);
     return () => clearTimeout(t);
   }, []);
@@ -595,7 +595,7 @@ export default function App() {
 
   // --- SOFT LOGIN HANDLERS ---
   const dismissLoginModal = useCallback(() => {
-    localStorage.setItem('rs_login_dismissed', '1');
+    localStorage.setItem('rs_login_dismissed_v2', '1');
     setShowLoginModal(false);
     setLoginContact('');
     setLoginError('');
@@ -612,7 +612,7 @@ export default function App() {
       dismissLoginModal();
     } catch (err) {
       if (err.code === 'auth/popup-blocked') {
-        localStorage.setItem('rs_login_dismissed', '1');
+        localStorage.setItem('rs_login_dismissed_v2', '1');
         const provider2 = new GoogleAuthProvider();
         provider2.setCustomParameters({ prompt: 'select_account' });
         await signInWithRedirectFB(auth, provider2);
@@ -633,7 +633,7 @@ export default function App() {
       dismissLoginModal();
     } catch (err) {
       if (err.code === 'auth/popup-blocked') {
-        localStorage.setItem('rs_login_dismissed', '1');
+        localStorage.setItem('rs_login_dismissed_v2', '1');
         const provider2 = new OAuthProvider('yahoo.com');
         await signInWithRedirectFB(auth, provider2);
       } else if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
